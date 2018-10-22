@@ -43,46 +43,15 @@ make -f Makefile
 
 ## Running the application
 ```
-Usage: sh2_ftdi_logger.exe <out.dsf> [--deviceNumber=<id>] [--rate=<rate>] [--raw] [--calibrated] [--uncalibrated] [--mode=<9agm,6ag,6am,6gm,3a,3g,3m,all>] [--dcdAutoSave] [--calEnable=0x<mask>][--config]
-   out.dsf              - output dsf file
-   --deviceNumber=<id>  - which device to open.  0 for a single device.
-   --rate=<rate>        - requested sampling rate for all sensors.  Default: 100Hz
-   --raw                - include raw data and use SAMPLE_TIME for timing
-   --calibrated         - include calibrated output sensors
-   --uncalibrated       - include uncalibrated output sensors
-   --mode=<mode>        - sensors types to log.  9agm, 6ag, 6am, 6gm, 3a, 3g, 3m or all.
-   --dcdAutoSave        - enable DCD auto saving.  No dcd save by default.
-   --clearDcd           - clear DCD and reset upon startup.
-   --calEnable=0x<mask> - cal enable mask.  Bits: Planar, A, G, M.  Default 0x8
-   --orientation=<orientation> - system orientation. enu, ned. Default: ned
-   --batch=<filePath>   - batch file for the list of specific sensors in json format. When enabled, all other options are ignored. 
+Usage: sh2_ftdi_logger.exe <*.json> [--template]
+   *.json     - Configuration file in json format
+   --template - Generate a configuration template file, 'logger.json'
 ```
 
-The list of sensor reports generated for each mode and options.
-
-| Mode | Base Sensor Set | _Calibrated_ | _Uncalibrated_ | _Raw_ |
-|---| --- | --- | --- | --- |
-| **_all_** | ROTATION_VECTOR <br/> GAME_ROTATION_VECTOR <br/> GEOMAGNETIC_ROTATION_VECTOR | ACCELEROMETER <br/> GYROSCOPE_CALIBRATED <br/> MAGNETIC_FIELD_CALIBRATED | GYROSCOPE_UNCALIBRATED <br/> MAGNETIC_FIELD_UNCALIBRATED | RAW_ACCELEROMETER <br/> RAW_GYROSCOPE <br/> RAW_MAGNETOMETER |
-| **_9agm_** | ROTATION_VECTOR  | ACCELEROMETER <br/> GYROSCOPE_CALIBRATED <br/> MAGNETIC_FIELD_CALIBRATED | GYROSCOPE_UNCALIBRATED <br/> MAGNETIC_FIELD_UNCALIBRATED | RAW_ACCELEROMETER <br/> RAW_GYROSCOPE <br/> RAW_MAGNETOMETER |
-| **_6ag_** | GAME_ROTATION_VECTOR | ACCELEROMETER <br/> GYROSCOPE_CALIBRATED | GYROSCOPE_UNCALIBRATED | RAW_ACCELEROMETER <br/> RAW_GYROSCOPE |
-| **_6am_** | GEOMAGNETIC_ROTATION_VECTOR | ACCELEROMETER <br/> MAGNETIC_FIELD_CALIBRATED | MAGNETIC_FIELD_UNCALIBRATED | RAW_ACCELEROMETER <br/> RAW_MAGNETOMETER |
-| **_6gm_** |  | GYROSCOPE_CALIBRATED <br/> MAGNETIC_FIELD_CALIBRATED | GYROSCOPE_UNCALIBRATED <br/> MAGNETIC_FIELD_UNCALIBRATED | RAW_GYROSCOPE <br/> RAW_MAGNETOMETER |
-| **_3a_** | | ACCELEROMETER | | RAW_ACCELEROMETER |
-| **_3g_** | | GYROSCOPE_CALIBRATED | GYROSCOPE_UNCALIBRATED | RAW_GYROSCOPE |
-| **_3m_** | | MAGNETIC_FIELD_CALIBRATED | MAGNETIC_FIELD_UNCALIBRATED | RAW_MAGNETOMETER |
-
-### Examples 
-Run DSF logger in '6ag' mode to enable the GameRV sensors along with the associated raw sensor reports. 
-The SensorHub device is connected to /dev/ttyUSB2.
-
+### Generate Template Json File
+Use the '--template' option to generate a batch json file template. The output file name is called "logger.json".
 ```
-sh2_ftdi_logger.exe out_2.dsf --deviceNumber=2 --raw --mode=6ag
-```
-
-#### Batch Mode
-Use the '--batch' option to generate a batch json file template. The output file name is called "logger.json".
-```
-sh2_ftdi_logger.exe --batch
+sh2_ftdi_logger.exe --template
 ```
 
 Next, modify the generated json file. To enable sensors, specify the operating rate of each active sensor in the json file. 
@@ -109,9 +78,10 @@ For instance, to enable the GameRV sensors at 100Hz and the Accelerometer at 200
 		....
 ```
 
+### Run The Application
 To Run the DSF logger with the updated batch file
 ```
-sh2_ftdi_logger.exe --batch=logger.json
+sh2_ftdi_logger.exe logger.json
 ```
 
 ## License

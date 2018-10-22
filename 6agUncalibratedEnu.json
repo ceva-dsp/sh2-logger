@@ -1,0 +1,12 @@
+{
+    "calEnable": "0x00",
+    "clearDcd": false,
+    "dcdAutoSave": false,
+    "deviceNumber": 0,
+    "orientation": "enu",
+    "outDsfFile": "out.dsf",
+    "sensorList": {
+        "Game Rotation Vector": 10000,
+        "Uncalibrated Gyroscope": 10000
+    }
+}

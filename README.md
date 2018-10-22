@@ -55,7 +55,7 @@ Usage: sh2_ftdi_logger.exe <out.dsf> [--deviceNumber=<id>] [--rate=<rate>] [--ra
    --clearDcd           - clear DCD and reset upon startup.
    --calEnable=0x<mask> - cal enable mask.  Bits: Planar, A, G, M.  Default 0x8
    --orientation=<orientation> - system orientation. enu, ned. Default: ned
-   --batch=<filePath>   - get the list of sensors from the batch file specified. When enabled, the raw, calibrated, uncalibrated and mode options are ignored. 
+   --batch=<filePath>   - batch file for the list of specific sensors in json format. When enabled, all other options are ignored. 
 ```
 
 The list of sensor reports generated for each mode and options.
@@ -72,7 +72,6 @@ The list of sensor reports generated for each mode and options.
 | **_3m_** | | MAGNETIC_FIELD_CALIBRATED | MAGNETIC_FIELD_UNCALIBRATED | RAW_MAGNETOMETER |
 
 ### Examples 
-
 Run DSF logger in '6ag' mode to enable the GameRV sensors along with the associated raw sensor reports. 
 The SensorHub device is connected to /dev/ttyUSB2.
 
@@ -80,17 +79,39 @@ The SensorHub device is connected to /dev/ttyUSB2.
 sh2_ftdi_logger.exe out_2.dsf --deviceNumber=2 --raw --mode=6ag
 ```
 
-
-Run DSF logger in 'batch' mode to enable the GameRV sensors along with the Activity Classifier and the Step Detector. Create a batch file called 'sensorlist.lst'. List out the SH2 Sensor ID of the required sensors; one sensor per line.
+#### Batch Mode
+Use the '--batch' option to generate a batch json file template. The output file name is called "logger.json".
 ```
-8
-24
-30
+sh2_ftdi_logger.exe --batch
 ```
 
-To Run the DSF logger.
+Next, modify the generated json file. To enable sensors, specify the operating rate of each active sensor in the json file. 
+For instance, to enable the GameRV sensors at 100Hz and the Accelerometer at 200Hz. Update the "sensorList" section of the json file as below.
 ```
-sh2_ftdi_logger.exe out_2.dsf --deviceNumber=2 --batch=sensorlist.lst
+{
+    "calEnable": "0x00",
+    "clearDcd": false,
+    "dcdAutoSave": false,
+    "deviceNumber": 0,
+    "orientation": "ned",
+    "outDsfFile": "out.dsf",
+    "sensorList": {
+        "ARVR Stabilized GameRotation Vector": 0,
+        "ARVR Stabilized Rotation Vector": 0,
+        "Accelerometer": 200,
+        "Ambient Light": 0,
+        "Circle Detector": 0,
+        "Flip Detector": 0,
+        "Game Rotation Vector": 100,
+        "Geomagnetic Rotation Vector": 0,
+        "Gravity": 0,
+		
+		....
+```
+
+To Run the DSF logger with the updated batch file
+```
+sh2_ftdi_logger.exe --batch=logger.json
 ```
 
 ## License

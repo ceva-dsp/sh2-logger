@@ -24,6 +24,7 @@
 #include <string.h>
 #include <iomanip>
 #include <iostream>
+#include <string>
 
 
 // =================================================================================================
@@ -81,6 +82,9 @@ static double lastSampleTime = 0;
 
 static uint64_t sensorEventsReceived_ = 0;
 
+// =================================================================================================
+// CONST LOCAL VARIABLES
+// =================================================================================================
 // Sensors which requires special configuration
 static const sh2_SensorConfig_t DefaultConfigSpec_ = { false, false, false, false, 0, 0, 0, 0 };
 
@@ -199,6 +203,8 @@ static const sensorSpec_s SensorSpec_[] = {
     {"ARVR Stabilized GameRotation Vector", &DefaultConfigSpec_ },  // 0x29
     {"Gyro Rotation Vector", &DefaultConfigSpec_ },         // 0x2A
 };
+static_assert((sizeof(SensorSpec_) / sizeof(sensorSpec_s)) == (SH2_MAX_SENSOR_ID + 1), 
+    "Const variable size match failed");
 
 
 // =================================================================================================
@@ -357,26 +363,24 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, D
     // Enable Sensors
 
     // Check if a config file is specified.
-    if (appConfig->batch) {
-        ProcessConfigFile(&sensorsToEnable_, appConfig);
-    }
-
-    // Update the list of enabled sensors based on the mode options
-    if (!appConfig->batch) {
-        UpdateSensorList(&sensorsToEnable_, appConfig);
+    pSensorsToEnable_ = appConfig->pSensorsToEnable;
+    if (pSensorsToEnable_ == 0 || pSensorsToEnable_->empty()) {
+        std::cout << "ERROR: NO Sensor list is specified.\n";
+        return -1;
     }
 
     // Enable Sensors
-    uint32_t reportInterval_us;
-    reportInterval_us = static_cast<uint32_t>((1e6 / appConfig->rate) + 0.5);
-
     std::cout << "\nINFO: Enable Sensors\n";
     sh2_SensorConfig_t config;
-    for (SensorList_t::iterator it = sensorsToEnable_.begin(); it != sensorsToEnable_.end(); ++it) {
-        GetSensorConfiguration(*it, &config);
-        config.reportInterval_us = reportInterval_us;
-        std::cout << "INFO: Sensor ID : " << *it << " - " << SensorSpec_[*it].name << "\n";
-        sh2_setSensorConfig(*it, &config);
+    for (sensorList_t::iterator it = pSensorsToEnable_->begin(); it != pSensorsToEnable_->end(); ++it) {
+        GetSensorConfiguration(it->sensorId, &config);
+        config.reportInterval_us = it->reportInterval_us;
+
+        // std::cout << "INFO: Sensor ID : " << static_cast<uint32_t>(it->sensorId);
+        // std::cout << " - " << SensorSpec_[it->sensorId].name;
+        // std::cout << " @ " << (1e6 / config.reportInterval_us) << "Hz";
+        // std::cout << " (" << config.reportInterval_us << "us)\n";
+        sh2_setSensorConfig(it->sensorId, &config);
     }
     
     firstReportReceived_ = false;
@@ -426,8 +430,8 @@ int LoggerApp::finish() {
     sh2_SensorConfig_t config;
     memset(&config, 0, sizeof(config));
     config.reportInterval_us = 0;
-    for (SensorList_t::iterator it = sensorsToEnable_.begin(); it != sensorsToEnable_.end(); ++it) {
-        sh2_setSensorConfig(*it, &config);
+    for (sensorList_t::iterator it = pSensorsToEnable_->begin(); it != pSensorsToEnable_->end(); ++it) {
+        sh2_setSensorConfig(it->sensorId, &config);
     }
 
     /*
@@ -446,6 +450,20 @@ int LoggerApp::finish() {
     std::cout << "INFO: Shutdown complete" << std::endl;
 
     return 1;
+}
+
+// -------------------------------------------------------------------------------------------------
+// LoggerApp::findSensorIdByName
+// -------------------------------------------------------------------------------------------------
+int LoggerApp::findSensorIdByName(char const * name) {
+
+    for (int i = 0; i <= SH2_MAX_SENSOR_ID; i++) {
+        if (strcmp(name, SensorSpec_[i].name) == 0) {
+            return i;
+        }
+    }
+    // Return an invalid Sensor ID if no sensor is matched.
+    return SH2_MAX_SENSOR_ID + 1;
 }
 
 
@@ -511,164 +529,6 @@ bool LoggerApp::WaitForResetComplete(int loops) {
     return true;
 }
 
-// -------------------------------------------------------------------------------------------------
-// LoggerApp::ProcessConfigFile
-// -------------------------------------------------------------------------------------------------
-void LoggerApp::ProcessConfigFile(SensorList_t* sensorsToEnable, LoggerApp::appConfig_s* pConfig) {
-    std::ifstream infile(pConfig->batchFilePath);
-    if (infile.is_open()) {
-        std::cout << "\nINFO: Extract Sensor list from " << pConfig->batchFilePath << "\n";
-
-        sh2_SensorId_t sensorId;
-        int id;
-        while (infile >> id) {
-            sensorId = (sh2_SensorId_t)id;
-            if (sensorId <= SH2_MAX_SENSOR_ID) {
-                std::cout << "INFO: (batch) Sensor ID " << id << " \n";
-                sensorsToEnable_.push_back(sensorId);
-            }
-        }
-        sensorsToEnable_.sort();
-        sensorsToEnable_.unique();
-
-    } else {
-        // sensor list configuration file is not found. clear the appConfig->batch field
-        std::cout << "\nWARNING: Batch file " << pConfig->batchFilePath << " is NOT found.\n";
-        pConfig->batch = false;
-        pConfig->batchFilePath = NULL;
-    }
-    infile.close();
-}
-
-// -------------------------------------------------------------------------------------------------
-// LoggerApp::UpdateSensorList
-// -------------------------------------------------------------------------------------------------
-void LoggerApp::UpdateSensorList(SensorList_t* sensorsToEnable, LoggerApp::appConfig_s* pConfig) {
-
-    if (pConfig->outputRaw) {
-        useSampleTime = true;
-        switch (pConfig->sensorMode) {
-            default:
-            case SENSOR_MODE_9AGM:
-            case SENSOR_MODE_ALL:
-                sensorsToEnable->push_back(SH2_RAW_ACCELEROMETER);
-                sensorsToEnable->push_back(SH2_RAW_GYROSCOPE);
-                sensorsToEnable->push_back(SH2_RAW_MAGNETOMETER);
-                break;
-            case SENSOR_MODE_6AG:
-                sensorsToEnable->push_back(SH2_RAW_ACCELEROMETER);
-                sensorsToEnable->push_back(SH2_RAW_GYROSCOPE);
-                break;
-            case SENSOR_MODE_6AM:
-                sensorsToEnable->push_back(SH2_RAW_ACCELEROMETER);
-                sensorsToEnable->push_back(SH2_RAW_MAGNETOMETER);
-                break;
-            case SENSOR_MODE_6GM:
-                sensorsToEnable->push_back(SH2_RAW_GYROSCOPE);
-                sensorsToEnable->push_back(SH2_RAW_MAGNETOMETER);
-                break;
-            case SENSOR_MODE_3A:
-                sensorsToEnable->push_back(SH2_RAW_ACCELEROMETER);
-                break;
-            case SENSOR_MODE_3G:
-                sensorsToEnable->push_back(SH2_RAW_GYROSCOPE);
-                break;
-            case SENSOR_MODE_3M:
-                sensorsToEnable->push_back(SH2_RAW_MAGNETOMETER);
-                break;
-        }
-    }
-
-    if (pConfig->outputCalibrated) {
-        switch (pConfig->sensorMode) {
-            default:
-            case SENSOR_MODE_9AGM:
-                sensorsToEnable->push_back(SH2_ACCELEROMETER);
-                sensorsToEnable->push_back(SH2_GYROSCOPE_CALIBRATED);
-                sensorsToEnable->push_back(SH2_MAGNETIC_FIELD_CALIBRATED);
-                break;
-            case SENSOR_MODE_ALL:
-                sensorsToEnable->push_back(SH2_ACCELEROMETER);
-                sensorsToEnable->push_back(SH2_GYROSCOPE_CALIBRATED);
-                sensorsToEnable->push_back(SH2_MAGNETIC_FIELD_CALIBRATED);
-                sensorsToEnable->push_back(SH2_LINEAR_ACCELERATION);
-                sensorsToEnable->push_back(SH2_GRAVITY);
-                break;
-            case SENSOR_MODE_6AG:
-                sensorsToEnable->push_back(SH2_ACCELEROMETER);
-                sensorsToEnable->push_back(SH2_GYROSCOPE_CALIBRATED);
-                break;
-            case SENSOR_MODE_6AM:
-                sensorsToEnable->push_back(SH2_ACCELEROMETER);
-                sensorsToEnable->push_back(SH2_MAGNETIC_FIELD_CALIBRATED);
-                break;
-            case SENSOR_MODE_6GM:
-                sensorsToEnable->push_back(SH2_GYROSCOPE_CALIBRATED);
-                sensorsToEnable->push_back(SH2_MAGNETIC_FIELD_CALIBRATED);
-                break;
-            case SENSOR_MODE_3A:
-                sensorsToEnable->push_back(SH2_ACCELEROMETER);
-                break;
-            case SENSOR_MODE_3G:
-                sensorsToEnable->push_back(SH2_GYROSCOPE_CALIBRATED);
-                break;
-            case SENSOR_MODE_3M:
-                sensorsToEnable->push_back(SH2_MAGNETIC_FIELD_CALIBRATED);
-                break;
-        }
-    }
-
-    if (pConfig->outputUncalibrated) {
-        switch (pConfig->sensorMode) {
-            default:
-            case SENSOR_MODE_9AGM:
-            case SENSOR_MODE_ALL:
-                sensorsToEnable->push_back(SH2_GYROSCOPE_UNCALIBRATED);
-                sensorsToEnable->push_back(SH2_MAGNETIC_FIELD_UNCALIBRATED);
-                break;
-            case SENSOR_MODE_6AG:
-                sensorsToEnable->push_back(SH2_GYROSCOPE_UNCALIBRATED);
-                break;
-            case SENSOR_MODE_6AM:
-                sensorsToEnable->push_back(SH2_MAGNETIC_FIELD_UNCALIBRATED);
-                break;
-            case SENSOR_MODE_6GM:
-                sensorsToEnable->push_back(SH2_GYROSCOPE_UNCALIBRATED);
-                sensorsToEnable->push_back(SH2_MAGNETIC_FIELD_UNCALIBRATED);
-                break;
-            case SENSOR_MODE_3A:
-                break;
-            case SENSOR_MODE_3G:
-                sensorsToEnable->push_back(SH2_GYROSCOPE_UNCALIBRATED);
-                break;
-            case SENSOR_MODE_3M:
-                sensorsToEnable->push_back(SH2_MAGNETIC_FIELD_UNCALIBRATED);
-                break;
-        }
-    }
-
-    switch (pConfig->sensorMode) {
-        default:
-        case SENSOR_MODE_9AGM:
-            sensorsToEnable->push_back(SH2_ROTATION_VECTOR);
-            break;
-        case SENSOR_MODE_6AG:
-            sensorsToEnable->push_back(SH2_GAME_ROTATION_VECTOR);
-            break;
-        case SENSOR_MODE_6AM:
-            sensorsToEnable->push_back(SH2_GEOMAGNETIC_ROTATION_VECTOR);
-            break;
-        case SENSOR_MODE_ALL:
-            sensorsToEnable->push_back(SH2_ROTATION_VECTOR);
-            sensorsToEnable->push_back(SH2_GAME_ROTATION_VECTOR);
-            sensorsToEnable->push_back(SH2_GEOMAGNETIC_ROTATION_VECTOR);
-        case SENSOR_MODE_6GM:
-        case SENSOR_MODE_3A:
-        case SENSOR_MODE_3G:
-        case SENSOR_MODE_3M:
-            break;
-    }
-}
 
 // -------------------------------------------------------------------------------------------------
 // LoggerApp::GetSensorConfiguration

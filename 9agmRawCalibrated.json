@@ -1,0 +1,17 @@
+{
+    "calEnable": "0x00",
+    "clearDcd": false,
+    "dcdAutoSave": false,
+    "deviceNumber": 0,
+    "orientation": "ned",
+    "outDsfFile": "out.dsf",
+    "sensorList": {
+        "Rotation Vector": 10000,
+        "Accelerometer": 10000,
+        "Gyroscope": 10000,
+        "Magnetic Field": 10000,
+        "Raw Accelerometer": 10000,
+        "Raw Gyroscope": 10000,
+        "Raw Magnetometer": 10000
+    }
+}

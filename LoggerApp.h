@@ -31,16 +31,7 @@ extern "C" {
 // =================================================================================================
 // DEFINES AND MACROS
 // =================================================================================================
-enum SensorMode {
-    SENSOR_MODE_9AGM,
-    SENSOR_MODE_6AG,
-    SENSOR_MODE_6AM,
-    SENSOR_MODE_6GM,
-    SENSOR_MODE_3A,
-    SENSOR_MODE_3G,
-    SENSOR_MODE_3M,
-    SENSOR_MODE_ALL
-};
+
 
 // =================================================================================================
 // DATA TYPES
@@ -59,33 +50,39 @@ public:
     // ---------------------------------------------------------------------------------------------
     // DATA TYPES
     // ---------------------------------------------------------------------------------------------
+    struct SensorFeatureSet_s {
+        sh2_SensorId_t sensorId;
+        uint32_t reportInterval_us;
+
+        bool operator<(SensorFeatureSet_s const &other) { return sensorId < other.sensorId; }
+        bool operator==(SensorFeatureSet_s const &other) { return sensorId == other.sensorId; }
+    };
+    typedef std::list<SensorFeatureSet_s> sensorList_t;
+
     struct appConfig_s {
-        int deviceNumber = 0;
-        double rate = 100.0;
-        bool outputRaw = false;
-        bool outputCalibrated = false;
-        bool outputUncalibrated = false;
-        SensorMode sensorMode = SENSOR_MODE_9AGM;
-        bool dcdAutoSave = false;
+        uint8_t calEnableMask = 0x0;
         bool clearDcd = false;
-        uint8_t calEnableMask = 0x8; // TODO review data type
+        bool dcdAutoSave = false;
+        int deviceNumber = 0;
         bool orientationNed = true;
-        bool batch = false;
-        char const * batchFilePath = 0;
+        sensorList_t * pSensorsToEnable = 0;
     };
 
+    // ---------------------------------------------------------------------------------------------
+    // PUBLIC METHODS
+    // ---------------------------------------------------------------------------------------------
     int init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, DsfLogger* logger);
 
     int service();
 
     int finish();
 
-private:
     // ---------------------------------------------------------------------------------------------
-    // DATA TYPE
+    // STATIC METHODS
     // ---------------------------------------------------------------------------------------------
-    typedef std::list<uint32_t> SensorList_t;
+    static int findSensorIdByName(char const * name);
 
+private:
     // ---------------------------------------------------------------------------------------------
     // VARIABLES
     // ---------------------------------------------------------------------------------------------
@@ -93,14 +90,12 @@ private:
     uint64_t lastReportTime_us_;
     uint64_t curReportTime_us_;
 
-    SensorList_t sensorsToEnable_;
+    sensorList_t * pSensorsToEnable_;
 
     // ---------------------------------------------------------------------------------------------
     // PRIVATE METHODS
     // ---------------------------------------------------------------------------------------------
     bool WaitForResetComplete(int loops);
-    void ProcessConfigFile(SensorList_t* sensorsToEnable, LoggerApp::appConfig_s* pConfig);
-    void UpdateSensorList(SensorList_t* sensorsToEnable, LoggerApp::appConfig_s* pConfig);
     void GetSensorConfiguration(sh2_SensorId_t sensorId, sh2_SensorConfig_t* pConfig);
 
     int LogFrs(uint16_t recordId, char const* name);

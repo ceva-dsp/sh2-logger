@@ -34,19 +34,75 @@
 #include <string.h>
 #include <iomanip>
 #include <iostream>
+#include <string>
+#include <nlohmann/json.hpp>
 
 // =================================================================================================
 // DEFINES AND MACROS
 // =================================================================================================
+using json = nlohmann::json;
 
 // =================================================================================================
 // DATA TYPES
 // =================================================================================================
 
 // =================================================================================================
+// CONST LOCAL VARIABLES
+// =================================================================================================
+// JSON configuration file template
+static const json loggerJson_ = {
+    { "calEnable", "0x00" },
+    { "clearDcd", false },
+    { "dcdAutoSave", false },
+    { "deviceNumber", 0 },
+    { "orientation", "ned" },
+    { "outDsfFile", "out.dsf" },
+    { "sensorList", {
+        { "Accelerometer", 0 },                         // 0x01
+        { "Gyroscope", 0 },                             // 0x02
+        { "Magnetic Field", 0 },                        // 0x03
+        { "Linear Acceleration", 0 },                   // 0x04
+        { "Rotation Vector", 0 },                       // 0x05
+        { "Gravity", 0 },                               // 0x06
+        { "Uncalibrated Gyroscope", 0 },                // 0x07
+        { "Game Rotation Vector", 0 },                  // 0x08
+        { "Geomagnetic Rotation Vector", 0 },           // 0x09
+        { "Pressure", 0 },                              // 0x0A
+        { "Ambient Light", 0 },                         // 0x0B
+        { "Humidity", 0 },                              // 0x0C
+        { "Proximity", 0 },                             // 0x0D
+        { "Temperature", 0 },                           // 0x0E
+        { "Uncalibrated MagneticField", 0 },            // 0x0F
+        { "Tap Detector", 0 },                          // 0x10
+        { "Step Counter", 0 },                          // 0x11
+        { "Significant Motion", 0 },                    // 0x12
+        { "Stability Classifier", 0 },                  // 0x13
+        { "Raw Accelerometer", 0 },                     // 0x14
+        { "Raw Gyroscope", 0 },                         // 0x15
+        { "Raw Magnetometer", 0 },                      // 0x16
+        { "Step Detector", 0 },                         // 0x18
+        { "Shake Detector", 0 },                        // 0x19
+        { "Flip Detector", 0 },                         // 0x1A
+        { "Pickup Detector", 0 },                       // 0x1B
+        { "Stability Detector", 0 },                    // 0x1C
+        { "Personal Activity Classifier", 0 },          // 0x1E
+        { "Sleep Detector", 0 },                        // 0x1F
+        { "Tilt Detector", 0 },                         // 0x20
+        { "Pocket Detector", 0 },                       // 0x21
+        { "Circle Detector", 0 },                       // 0x22
+        { "Heart Rate Monitor", 0 },                    // 0x23
+        { "ARVR Stabilized Rotation Vector", 0 },       // 0x28
+        { "ARVR Stabilized GameRotation Vector", 0 },   // 0x29
+        { "Gyro Rotation Vector", 0 },                  // 0x2A
+    } },
+};
+
+static const char DefaultJsonName[] = "logger.json";
+static const uint32_t MaxPathLen = 260;
+
+// =================================================================================================
 // LOCAL VARIABLES
 // =================================================================================================
-static LoggerApp loggerApp_;
 #ifdef _WIN32
 static TimerSrvWin timer_;
 static FtdiHalWin ftdiHal_;
@@ -54,10 +110,25 @@ static FtdiHalWin ftdiHal_;
 static TimerSrvRpi timer_;
 static FtdiHalRpi ftdiHal_;
 #endif
-static DsfLogger logger_;
+
+static LoggerApp loggerApp_;
+static DsfLogger dsfLogger_;
 static bool runApp_ = true;
 
-static const char sensorListFile[] = "./sensorlist.lst";
+// Character array for output DSF file path
+static char outDsfPath_[MaxPathLen];
+
+// List of sensors to be enabled
+static LoggerApp::sensorList_t sensorsToEnable_;
+
+// Pointer to the batch json file path
+static const char * pBatchFilePath_ = 0;
+
+
+// =================================================================================================
+// LOCAL FUNCTION PROTOTYPES
+// =================================================================================================
+bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig);
 
 
 // =================================================================================================
@@ -76,32 +147,20 @@ void breakHandler(int) {
 
 void usage(const char* myname) {
     fprintf(stderr,
-            "Usage: %s <out.dsf> [--deviceNumber=<id>] [--rate=<rate>] [--raw] [--calibrated] "
-            "[--uncalibrated] [--mode=<9agm,6ag,6am,6gm,3a,3g,3m,all>] [--dcdAutoSave] [--calEnable=0x<mask>]"
-            "[--orientation=enu,ned][--batch]\n"
-            "   out.dsf              - output dsf file\n"
-            "   --deviceNumber=<id>  - which device to open.  0 for a single device.\n"
-            "   --rate=<rate>        - requested sampling rate for all sensors.  Default: 100Hz\n"
-            "   --raw                - include raw data and use SAMPLE_TIME for timing\n"
-            "   --calibrated         - include calibrated output sensors\n"
-            "   --uncalibrated       - include uncalibrated output sensors\n"
-            "   --mode=<mode>        - sensors types to log.  9agm, 6ag, 6am, 6gm, 3a, 3g, 3m or all.\n"
-            "   --dcdAutoSave        - enable DCD auto saving.  No dcd save by default.\n"
-            "   --clearDcd           - clear DCD and reset upon startup.\n"
-            "   --calEnable=0x<mask> - cal enable mask.  Bits: Planar, A, G, M.  Default 0x8\n"
-            "   --orientation=<orientation> - system orientation. enu, ned. Default: ned\n"
-            "   --batch=<filePath>   - get the list of sensors from the batch file specified. "
-            "When enabled, the raw, calibrated, uncalibrated and mode options are ignored.\n",
+            "\nUsage: %s <*.json> [--template]\n"
+            "   *.json     - Configuration file in json format\n"
+            "   --template - Generate a configuration template file, 'logger.json' \n",
             myname);
 }
+
 
 // ================================================================================================
 // MAIN
 // ================================================================================================
 int main(int argc, const char* argv[]) {
-    bool argError = false;
-    char const* outFilePath = NULL;
+    bool argError;
     LoggerApp::appConfig_s appConfig;
+    json jBat;
 
 #ifndef _WIN32
     struct sigaction act;
@@ -109,102 +168,54 @@ int main(int argc, const char* argv[]) {
     sigaction(SIGINT, &act, NULL);
 #endif
 
+    // Clear local buffers
+    memset(outDsfPath_, 0, sizeof(outDsfPath_));
+    pBatchFilePath_ = 0;
+    argError = true;
+
+    // Process the 'batch' option. 
     for (int i = 1, j = 0; i < argc; i++) {
         const char* arg = argv[i];
         if (arg[0] == '-') {
-            if (strstr(arg, "--deviceNumber=") == arg) {
-                const char* val = strchr(arg, '=') + 1;
-                appConfig.deviceNumber = strtol(val, NULL, 10);
-            } else if (strstr(arg, "--rate=") == arg) {
-                const char* val = strchr(arg, '=') + 1;
-                appConfig.rate = strtod(val, NULL);
-            } else if (strcmp(arg, "--raw") == 0) {
-                appConfig.outputRaw = true;
-            } else if (strcmp(arg, "--calibrated") == 0) {
-                appConfig.outputCalibrated = true;
-            } else if (strcmp(arg, "--uncalibrated") == 0) {
-                appConfig.outputUncalibrated = true;
-            } else if (strstr(arg, "--mode=") == arg) {
-                const char* val = strchr(arg, '=') + 1;
-                if (strcmp(val, "9agm") == 0) {
-                    appConfig.sensorMode = SENSOR_MODE_9AGM;
-                } else if (strcmp(val, "6ag") == 0) {
-                    appConfig.sensorMode = SENSOR_MODE_6AG;
-                } else if (strcmp(val, "6am") == 0) {
-                    appConfig.sensorMode = SENSOR_MODE_6AM;
-                } else if (strcmp(val, "6gm") == 0) {
-                    appConfig.sensorMode = SENSOR_MODE_6GM;
-                } else if (strcmp(val, "3a") == 0) {
-                    appConfig.sensorMode = SENSOR_MODE_3A;
-                } else if (strcmp(val, "3g") == 0) {
-                    appConfig.sensorMode = SENSOR_MODE_3G;
-                } else if (strcmp(val, "3m") == 0) {
-                    appConfig.sensorMode = SENSOR_MODE_3M;
-                } else if (strcmp(val, "all") == 0) {
-                    appConfig.sensorMode = SENSOR_MODE_ALL;
-                } else {
-                    fprintf(stderr, "Unknown mode: %s\n", arg);
-                    argError = true;
-                }
-            } else if (strcmp(arg, "--dcdAutoSave") == 0) {
-                appConfig.dcdAutoSave = true;
-            } else if (strcmp(arg, "--clearDcd") == 0) {
-                appConfig.clearDcd = true;
-            } else if (strstr(arg, "--calEnable=") == arg) {
-                const char* val = strchr(arg, '=') + 1;
-                appConfig.calEnableMask = (uint8_t)strtol(val, NULL, 0);
-            } else if (strstr(arg, "--orientation=") == arg) {
-                const char* val = strchr(arg, '=') + 1;
-                if (strcmp(val, "enu") == 0) {
-                    appConfig.orientationNed = false;
-                } else {
-                    appConfig.orientationNed = true;
-                }
-            } else if (strstr(arg, "--batch") == arg) {
-                appConfig.batch = true;
-                const char* val = strchr(arg, '=');
-                if (val) {
-                    appConfig.batchFilePath = val + 1;
-                } else {
-                    appConfig.batchFilePath = sensorListFile;
-                }
+            if (strstr(arg, "--template") == arg) {
+                // Write a configuration file template
+                std::cout << "\nGenerate a configuration file template \"" << DefaultJsonName << "\". \n";
+                std::ofstream ofile(DefaultJsonName);
+                ofile << std::setw(4) << loggerJson_ << std::endl;
+                return 0;
             } else {
-                fprintf(stderr, "Unknown argument: %s\n", arg);
-                argError = true;
+                break;
             }
 
-            continue;
-        }
-
-        // positional arguments
-        if (j == 0) {
-            outFilePath = arg;
         } else {
-            fprintf(stderr, "Unknown argument: %s\n", arg);
-            argError = true;
+            if (strstr(arg, ".json")) {
+                pBatchFilePath_ = arg;
+                if (ParseJsonBatchFile(&appConfig)) {
+                    argError = false;
+                    break;
+                } else {
+                    return 0;
+                }
+            } else {
+                break;
+            }
         }
-
-        j++;
     }
-
-    if (outFilePath == NULL) {
-        argError = true;
-    }
-
+ 
     if (argError) {
         usage(argv[0]);
         return -1;
     }
 
-	// --------------------------------------------------------------------------------------------
+    // --------------------------------------------------------------------------------------------
 	// Start Application
 	// --------------------------------------------------------------------------------------------
 	runApp_ = true;
 
 	// Initialize DSF Logger
-    bool rv = logger_.init(outFilePath, appConfig.orientationNed);
+    bool rv = dsfLogger_.init(outDsfPath_, appConfig.orientationNed);
     if (!rv) {
-        std::cout << "ERROR: Unable to open file:  \"" << outFilePath << "\"" << std::endl;
+        std::cout << "ERROR: Unable to open dsf file:  \"" << outDsfPath_ << "\"" << std::endl;
         return -1;
     }
 
@@ -215,14 +226,13 @@ int main(int argc, const char* argv[]) {
     int status;
     FtdiHal* pFtdiHal = &ftdiHal_;
     status = pFtdiHal->init(appConfig.deviceNumber, &timer_);
-	// status = ftdiHal_.init(appConfig.deviceNumber, &timer_);
     if (status != 0) {
         std::cout << "ERROR: Initialize FTDI HAL failed!\n";
         return -1;
     }
 
     // Initialize the LoggerApp
-    status = loggerApp_.init(&appConfig, &timer_, &ftdiHal_, &logger_);
+    status = loggerApp_.init(&appConfig, &timer_, &ftdiHal_, &dsfLogger_);
     if (status != 0) {
         std::cout << "ERROR: Initialize LoggerApp failed!\n";
         return -1;
@@ -278,4 +288,125 @@ int main(int argc, const char* argv[]) {
     SetConsoleMode(hstdin, mode);
 #endif
     return 0;
+}
+
+
+// ================================================================================================
+// ParseJsonBatchFile
+// ================================================================================================
+bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
+    json jBat;
+    bool foundSensorList = false;
+
+    std::cout << "\nINFO: (json) Process the batch json file \'" << pBatchFilePath_  << "\' ... \n";
+
+    // Batch file is specified, extract the configuration options.
+    std::ifstream ifile(pBatchFilePath_);
+
+    // Read batch file into JSON object
+    try {
+        ifile >> jBat;
+    } catch (...) {
+        std::cout << "\nERROR: Json parser error. Abort!\n";
+        return false;
+    }
+
+    // iterate through the json object
+    for (json::iterator it = jBat.begin(); it != jBat.end(); ++it) {
+
+        if (it.key().compare("calEnable") == 0) {
+            std::string s = it.value();
+            pAppConfig->calEnableMask = static_cast<uint8_t>(strtoul(s.c_str(), nullptr, 16));
+            std::cout << "INFO: (json) Calibration Enable : " << static_cast<uint32_t>(pAppConfig->calEnableMask) << "\n";
+
+        } else if (it.key().compare("clearDcd") == 0) {
+            pAppConfig->clearDcd = it.value();
+            std::cout << "INFO: (json) Clear DCD : ";
+            if (pAppConfig->clearDcd) {
+                std::cout << "Enable\n";
+            } else {
+                std::cout << "Disable\n";
+            }
+
+        } else if (it.key().compare("dcdAutoSave") == 0) {
+            pAppConfig->dcdAutoSave = it.value();
+            std::cout << "INFO: (json) DCD Auto Save : ";
+            if (pAppConfig->dcdAutoSave) {
+                std::cout << "Enable\n";
+            } else {
+                std::cout << "Disable\n";
+            }
+
+        } else if (it.key().compare("deviceNumber") == 0) {
+            pAppConfig->deviceNumber = it.value();
+            std::cout << "INFO: (json) Device Number : " << pAppConfig->deviceNumber << "\n";
+
+        } else if (it.key().compare("orientation") == 0) {
+            std::string val = it.value();
+            std::cout << "INFO: (json) Orientation : "; 
+            if (val.compare("enu") == 0) {
+                pAppConfig->orientationNed = false;
+                std::cout << "ENU\n";
+            } else {
+                pAppConfig->orientationNed = true;
+                std::cout << "NED\n";
+            }
+
+        } else if (it.key().compare("outDsfFile") == 0) {
+            std::string val = it.value();
+            if (val.size() < MaxPathLen) {
+                memcpy(outDsfPath_, val.c_str(), val.size());
+                std::cout << "INFO: (json) DSF Output file : " << outDsfPath_ << "\n";
+            } else {
+                std::cout << "ERROR: The length of the output DSF file path exceeds the limit (max 260 characters). Abort. \n";
+                return false;
+            }
+
+        } else if (it.key().compare("sensorList") == 0) {
+            foundSensorList = true;
+
+            std::cout << "INFO: (json) Extract Sensor list ... \n";
+
+            for (json::iterator sl = it.value().begin(); sl != it.value().end(); ++sl) {
+                LoggerApp::SensorFeatureSet_s config;
+                config.sensorId = (sh2_SensorId_t)LoggerApp::findSensorIdByName(sl.key().c_str());
+                float rate = sl.value();
+                config.reportInterval_us = static_cast<uint32_t>((1e6 / rate) + 0.5);
+
+                // Add the new sensor to sensorsToEnable_ if the ID is valid.
+                if (config.sensorId <= SH2_MAX_SENSOR_ID && config.reportInterval_us > 0) {
+                    std::cout << "INFO: (json)      Sensor ID : " << static_cast<uint32_t>(config.sensorId);
+                    std::cout << " - " << sl.key();
+                    std::cout << " @ " << (1e6 / config.reportInterval_us) << "Hz";
+                    std::cout << " (" << config.reportInterval_us << "us)\n";
+
+                    sensorsToEnable_.push_back(config);
+                }
+            }
+
+            sensorsToEnable_.sort();
+            sensorsToEnable_.unique();
+
+            if (sensorsToEnable_.empty()) {
+                std::cout << "ERROR: No sensor is enabled. Abort.\n";
+                return false;
+            }
+
+            pAppConfig->pSensorsToEnable = &sensorsToEnable_;
+        }
+    }
+
+    if (!foundSensorList) {
+        std::cout << "\nERROR: \"sensorList\" is not specified in the json file. Abort. \n";
+        return false;
+    }
+
+    // If an output dsf file path is not specified, return error then abort.
+    if (strlen(outDsfPath_) == 0) {
+        std::cout << "\nERROR: Output DSF file path is not specified. Abort. \n";
+        return false;
+    }
+
+    std::cout << "\n";
+    return true;
 }

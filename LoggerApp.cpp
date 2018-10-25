@@ -200,8 +200,9 @@ static const sensorSpec_s SensorSpec_[] = {
     {"Reserved", &DefaultConfigSpec_ },                     // 0x26
     {"Reserved", &DefaultConfigSpec_ },                     // 0x27
     {"ARVR Stabilized Rotation Vector", &DefaultConfigSpec_},      // 0x28
-    {"ARVR Stabilized GameRotation Vector", &DefaultConfigSpec_ },  // 0x29
+    {"ARVR Stabilized GameRotation Vector", &DefaultConfigSpec_ }, // 0x29
     {"Gyro Rotation Vector", &DefaultConfigSpec_ },         // 0x2A
+    {"IZRO Motion Request", &DefaultConfigSpec_ },          // 0x2B
 };
 static_assert((sizeof(SensorSpec_) / sizeof(sensorSpec_s)) == (SH2_MAX_SENSOR_ID + 1), 
     "Const variable size match failed");

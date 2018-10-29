@@ -156,9 +156,6 @@ void DsfLogger::logAsyncEvent(sh2_AsyncEvent_t* pEvent, double currTime) {
         case SH2_RESET:
             outFile_ << " reset(1)\n";
             break;
-        case SH2_FRS_CHANGE:
-            outFile_ << " frsChange(0x" << std::hex << pEvent->frsType << std::dec << ")\n";
-            break;
         default:
             outFile_ << " unknownEvent(" << pEvent->eventId << ")\n";
             break;

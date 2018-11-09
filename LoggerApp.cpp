@@ -227,6 +227,11 @@ void myEventCallback(void* cookie, sh2_AsyncEvent_t* pEvent) {
             break;
     }
 
+    // Report SHTP errors
+    if (pEvent->eventId == SH2_SHTP_EVENT) {
+        std::cout << "\nWARNING: SHTP error detected." << std::endl;
+    }
+
     // Log ansync events
     logger_->logAsyncEvent(pEvent, currTime);
 }

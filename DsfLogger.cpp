@@ -149,19 +149,26 @@ void DsfLogger::logMessage(char const* msg) {
 // -------------------------------------------------------------------------------------------------
 void DsfLogger::logAsyncEvent(sh2_AsyncEvent_t* pEvent, double currTime) {
 
-    outFile_ << "$ ";
-    outFile_ << std::fixed << std::setprecision(9) << currTime << ",";
-    outFile_.unsetf(std::ios_base::floatfield);
     switch (pEvent->eventId) {
         case SH2_RESET:
+            outFile_ << "$ ";
+            outFile_ << std::fixed << std::setprecision(9) << currTime << ",";
+            outFile_.unsetf(std::ios_base::floatfield);
             outFile_ << " reset(1)\n";
             break;
+        case SH2_GET_FEATURE_RESP:
+            // Log the sensor reporting interval
+            outFile_ << "$" << static_cast<int32_t>(pEvent->sh2SensorConfigResp.sensorId) << " ";
+            outFile_ << std::fixed << std::setprecision(9) << currTime << ", ";
+            outFile_.unsetf(std::ios_base::floatfield);
+            outFile_ << "period(";
+            outFile_ << (pEvent->sh2SensorConfigResp.sensorConfig.reportInterval_us / 1000000.0);
+            outFile_ << ")\n";
+            break;
         default:
-            outFile_ << " unknownEvent(" << pEvent->eventId << ")\n";
             break;
     }
 }
-
 
 // -------------------------------------------------------------------------------------------------
 // DsfLogger::logProductIds

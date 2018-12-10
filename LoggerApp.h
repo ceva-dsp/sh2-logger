@@ -88,7 +88,6 @@ private:
     // ---------------------------------------------------------------------------------------------
     bool firstReportReceived_ = false;
     uint64_t lastReportTime_us_;
-    uint64_t curReportTime_us_;
 
     sensorList_t * pSensorsToEnable_;
 
@@ -97,9 +96,10 @@ private:
     // ---------------------------------------------------------------------------------------------
     bool WaitForResetComplete(int loops);
     void GetSensorConfiguration(sh2_SensorId_t sensorId, sh2_SensorConfig_t* pConfig);
+    void ReportProgress();
 
-    int LogFrs(uint16_t recordId, char const* name);
-    void LogAllFrsBNO080();
+    int LogFrsRecord(uint16_t recordId, char const* name);
+    void LogAllFrsRecords();
 };
 
 #endif // LOGGER_APP_H

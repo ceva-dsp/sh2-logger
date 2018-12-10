@@ -30,7 +30,7 @@
 // =================================================================================================
 // DEFINES AND MACROS
 // =================================================================================================
-enum class State {
+enum class State_e {
     Idle,
     Reset,
     Startup,
@@ -72,13 +72,13 @@ static TimerSrv* timer_;
 static DsfLogger* logger_;
 static FtdiHal* ftdiHal_;
 
-static State state_ = State::Idle;
+static State_e state_ = State_e::Idle;
 
-// Timestamp
-static bool useSampleTime = false;
-static double startTime = 0;
-static double currTime = 0;
-static double lastSampleTime = 0;
+// Sensor Sample Timestamp
+static bool useSampleTime_ = false;
+static double firstSampleTime_us_ = 0;
+static double currSampleTime_us_ = 0;
+static double lastSampleTime_us_ = 0;
 
 static uint64_t sensorEventsReceived_ = 0;
 
@@ -108,7 +108,7 @@ static const sh2_SensorConfig_t CircleDetectorConfigSpec_ = { true, false, true,
 
 
 static sh2_Hal_t sh2Hal_ = {
-	Sh2HalOpen, //
+	Sh2HalOpen,
 	Sh2HalClose,
 	Sh2HalRead,
 	Sh2HalWrite,
@@ -217,10 +217,10 @@ static_assert((sizeof(SensorSpec_) / sizeof(sensorSpec_s)) == (SH2_MAX_SENSOR_ID
 void myEventCallback(void* cookie, sh2_AsyncEvent_t* pEvent) {
 
     switch (state_) {
-        case State::Reset:
+        case State_e::Reset:
             if (pEvent->eventId == SH2_RESET) {
                 std::cout << "\nINFO: Reset Complete" << std::endl;
-                state_ = State::Startup;
+                state_ = State_e::Startup;
             }
             break;
         default:
@@ -233,7 +233,7 @@ void myEventCallback(void* cookie, sh2_AsyncEvent_t* pEvent) {
     }
 
     // Log ansync events
-    logger_->logAsyncEvent(pEvent, currTime);
+    logger_->logAsyncEvent(pEvent, currSampleTime_us_);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -248,35 +248,35 @@ void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
         return;
     }
 
-    if (useSampleTime) {
+    if (useSampleTime_) {
         switch (value.sensorId) {
-        case SH2_RAW_ACCELEROMETER:
-            currTime = value.un.rawAccelerometer.timestamp * 1e-6;
-            lastSampleTime = currTime;
-            break;
-        case SH2_RAW_GYROSCOPE:
-            currTime = value.un.rawGyroscope.timestamp * 1e-6;
-            lastSampleTime = currTime;
-            break;
-        case SH2_RAW_MAGNETOMETER:
-            currTime = value.un.rawMagnetometer.timestamp * 1e-6;
-            lastSampleTime = currTime;
-            break;
-        default:
-            currTime = lastSampleTime;
-            break;
+            case SH2_RAW_ACCELEROMETER:
+                currSampleTime_us_ = value.un.rawAccelerometer.timestamp * 1e-6;
+                lastSampleTime_us_ = currSampleTime_us_;
+                break;
+            case SH2_RAW_GYROSCOPE:
+                currSampleTime_us_ = value.un.rawGyroscope.timestamp * 1e-6;
+                lastSampleTime_us_ = currSampleTime_us_;
+                break;
+            case SH2_RAW_MAGNETOMETER:
+                currSampleTime_us_ = value.un.rawMagnetometer.timestamp * 1e-6;
+                lastSampleTime_us_ = currSampleTime_us_;
+                break;
+            default:
+                currSampleTime_us_ = lastSampleTime_us_;
+                break;
         }
     } else {
-        currTime = value.timestamp * 1e-6;
+        currSampleTime_us_ = value.timestamp * 1e-6;
     }
 
-    if (startTime == 0) {
-        startTime = currTime;
+    if (firstSampleTime_us_ == 0) {
+        firstSampleTime_us_ = currSampleTime_us_;
     }
     ++sensorEventsReceived_;
 
     // Log sensor data
-    logger_->logSensorValue(&value, currTime);
+    logger_->logSensorValue(&value, currSampleTime_us_);
 }
 
 
@@ -294,7 +294,7 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, D
     logger_ = logger;
 
     // Open SH2/SHTP connection
-    state_ = State::Reset;
+    state_ = State_e::Reset;
     std::cout << "INFO: Open a session with a SensorHub \n";
     status = sh2_open(&sh2Hal_, myEventCallback, NULL);
     if (status != SH2_OK) {
@@ -328,7 +328,7 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, D
         uint32_t dummy = 0;
         sh2_setFrs(DYNAMIC_CALIBRATION, &dummy, 0);
 
-        state_ = State::Reset;
+        state_ = State_e::Reset;
         sh2_clearDcdAndReset();
         if (!WaitForResetComplete(RESET_TIMEOUT_)) {
             std::cout << "ERROR: Failed to reset a SensorHub - Timeout \n";
@@ -364,7 +364,7 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, D
 
     // Get Device FRS records
     std::cout << "INFO: Get FRS Records\n";
-    LogAllFrsBNO080();
+    LogAllFrsRecords();
 
     // Enable Sensors
 
@@ -390,7 +390,7 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, D
     }
     
     firstReportReceived_ = false;
-    state_ = State::Run;
+    state_ = State_e::Run;
 
     return 0;
 }
@@ -400,29 +400,10 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, D
 // -------------------------------------------------------------------------------------------------
 int LoggerApp::service() {
 
-    if (!firstReportReceived_) {
-        firstReportReceived_ = true;
-        lastReportTime_us_ = timer_->getTimestamp_us();
-    }
-
-    curReportTime_us_ = timer_->getTimestamp_us();
-
-    if (curReportTime_us_ - lastReportTime_us_ >= 1000000) {
-        double deltaT = currTime - startTime;
-        int32_t h = static_cast<int32_t>(floor(deltaT / 60.0 / 60.0));
-        int32_t m = static_cast<int32_t>(floor((deltaT - h * 60 * 60) / 60.0));
-        double s = deltaT - h * 60 * 60 - m * 60;
-
-        std::cout << "Samples: " << std::setfill(' ') << std::setw(10) << sensorEventsReceived_
-                  << " Duration: " << h << ":" << std::setw(2) << std::setfill('0') << m << ":"
-                  << std::setprecision(2) << s << " "
-                  << " Rate: " << std::fixed << std::setprecision(2)
-                  << sensorEventsReceived_ / deltaT << " Hz" << std::endl;
-
-        lastReportTime_us_ = curReportTime_us_;
-    }
+    ReportProgress();
 
     sh2_service();
+
     return 1;
 }
 
@@ -521,7 +502,7 @@ static uint32_t Sh2HalGetTimeUs(sh2_Hal_t* self) {
 bool LoggerApp::WaitForResetComplete(int loops) {
     std::cout << "INFO: Waiting for System Reset ";
 
-    for (int resetTime = 0; state_ == State::Reset; ++resetTime) {
+    for (int resetTime = 0; state_ == State_e::Reset; ++resetTime) {
 		// if (resetTime % 100 == 99) {
 		if (resetTime % 10000 == 9999) {
 			std::cout << ".";
@@ -535,7 +516,6 @@ bool LoggerApp::WaitForResetComplete(int loops) {
     return true;
 }
 
-
 // -------------------------------------------------------------------------------------------------
 // LoggerApp::GetSensorConfiguration
 // -------------------------------------------------------------------------------------------------
@@ -543,18 +523,48 @@ void LoggerApp::GetSensorConfiguration(sh2_SensorId_t sensorId, sh2_SensorConfig
     memcpy(pConfig, SensorSpec_[sensorId].config, sizeof(sh2_SensorConfig_t));
 }
 
+// -------------------------------------------------------------------------------------------------
+// LoggerApp::ReportProgress
+// -------------------------------------------------------------------------------------------------
+void LoggerApp::ReportProgress() {
+    uint64_t currSysTime_us;
+
+    if (!firstReportReceived_) {
+        firstReportReceived_ = true;
+        lastReportTime_us_ = timer_->getTimestamp_us();
+    }
+
+    currSysTime_us = timer_->getTimestamp_us();
+
+    if (currSysTime_us - lastReportTime_us_ >= 1000000) {
+        lastReportTime_us_ = currSysTime_us;
+
+        double deltaT = currSampleTime_us_ - firstSampleTime_us_;
+        int32_t h = static_cast<int32_t>(floor(deltaT / 60.0 / 60.0));
+        int32_t m = static_cast<int32_t>(floor((deltaT - h * 60 * 60) / 60.0));
+        double s = deltaT - h * 60 * 60 - m * 60;
+
+        std::cout << "Samples: " << std::setfill(' ') << std::setw(10) << sensorEventsReceived_
+            << " Duration: " << h << ":" << std::setw(2) << std::setfill('0') << m << ":"
+            << std::setprecision(2) << s << " "
+            << " Rate: " << std::fixed << std::setprecision(2)
+            << sensorEventsReceived_ / deltaT << " Hz" << std::endl;
+    }
+}
 
 // -------------------------------------------------------------------------------------------------
-// LoggerApp::LogFrs
+// LoggerApp::LogFrsRecord
 // -------------------------------------------------------------------------------------------------
-int LoggerApp::LogFrs(uint16_t recordId, char const* name) {
+int LoggerApp::LogFrsRecord(uint16_t recordId, char const* name) {
     uint32_t buffer[1024];
     memset(buffer, 0xAA, sizeof(buffer));
     uint16_t words = sizeof(buffer) / 4;
+
     int status = sh2_getFrs(recordId, buffer, &words);
     if (status != 0) {
         return 0;
     }
+
     if (words > 0) {
         logger_->logFrsRecord(name, buffer, words);
     }
@@ -562,17 +572,17 @@ int LoggerApp::LogFrs(uint16_t recordId, char const* name) {
 }
 
 // -------------------------------------------------------------------------------------------------
-// LoggerApp::LogAllFrsBNO080
+// LoggerApp::LogAllFrsRecords
 // -------------------------------------------------------------------------------------------------
-void LoggerApp::LogAllFrsBNO080() {
-    if (LogFrs(STATIC_CALIBRATION_AGM, "scd") == 0) {
+void LoggerApp::LogAllFrsRecords() {
+    if (LogFrsRecord(STATIC_CALIBRATION_AGM, "scd") == 0) {
         logger_->logMessage("# No SCD present, logging nominal calibration as 'scd'.");
-        LogFrs(NOMINAL_CALIBRATION, "scd");
+        LogFrsRecord(NOMINAL_CALIBRATION, "scd");
     }
 
     const frsString_s* pFrs;
     for (int i = 0; i < sizeof(bno080Frs_) / sizeof(frsString_s); i++) {
         pFrs = &bno080Frs_[i];
-        LogFrs(pFrs->recordId, pFrs->name);
+        LogFrsRecord(pFrs->recordId, pFrs->name);
     }
 }

@@ -230,6 +230,418 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double currTime) {
 
     switch (id) {
 
+        case SH2_RAW_ACCELEROMETER: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.rawAccelerometer.x << ",";
+            outFile_ << pValue->un.rawAccelerometer.y << ",";
+            outFile_ << pValue->un.rawAccelerometer.z << "\n";
+            break;
+        }
+        case SH2_ACCELEROMETER: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            if (orientationNed_) {
+                outFile_ << pValue->un.accelerometer.y << ","; // ENU -> NED
+                outFile_ << pValue->un.accelerometer.x << ",";
+                outFile_ << -pValue->un.accelerometer.z << ",";
+            }
+            else {
+                outFile_ << pValue->un.accelerometer.x << ",";
+                outFile_ << pValue->un.accelerometer.y << ",";
+                outFile_ << pValue->un.accelerometer.z << ",";
+            }
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_LINEAR_ACCELERATION: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            if (orientationNed_) {
+                outFile_ << pValue->un.linearAcceleration.y << ","; // ENU -> NED
+                outFile_ << pValue->un.linearAcceleration.x << ",";
+                outFile_ << -pValue->un.linearAcceleration.z << ",";
+            }
+            else {
+                outFile_ << pValue->un.linearAcceleration.x << ",";
+                outFile_ << pValue->un.linearAcceleration.y << ",";
+                outFile_ << pValue->un.linearAcceleration.z << ",";
+            }
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_GRAVITY: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            if (orientationNed_) {
+                outFile_ << pValue->un.gravity.y << ","; // ENU -> NED
+                outFile_ << pValue->un.gravity.x << ",";
+                outFile_ << -pValue->un.gravity.z << ",";
+            }
+            else {
+                outFile_ << pValue->un.gravity.x << ",";
+                outFile_ << pValue->un.gravity.y << ",";
+                outFile_ << pValue->un.gravity.z << ",";
+            }
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_RAW_GYROSCOPE: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.rawGyroscope.x << ",";
+            outFile_ << pValue->un.rawGyroscope.y << ",";
+            outFile_ << pValue->un.rawGyroscope.z << ",";
+            outFile_ << pValue->un.rawGyroscope.temperature << "\n";
+            break;
+        }
+        case SH2_GYROSCOPE_CALIBRATED: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            if (orientationNed_) {
+                outFile_ << pValue->un.gyroscope.y << ","; // ENU -> NED
+                outFile_ << pValue->un.gyroscope.x << ",";
+                outFile_ << -pValue->un.gyroscope.z;
+            }
+            else {
+                outFile_ << pValue->un.gyroscope.x << ",";
+                outFile_ << pValue->un.gyroscope.y << ",";
+                outFile_ << pValue->un.gyroscope.z;
+            }
+            outFile_ << "\n";
+            break;
+        }
+        case SH2_GYROSCOPE_UNCALIBRATED: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            if (orientationNed_) {
+                outFile_ << pValue->un.gyroscopeUncal.y << ","; // ENU -> NED
+                outFile_ << pValue->un.gyroscopeUncal.x << ",";
+                outFile_ << -pValue->un.gyroscopeUncal.z << ",";
+                outFile_ << pValue->un.gyroscopeUncal.biasY << ","; // ENU -> NED
+                outFile_ << pValue->un.gyroscopeUncal.biasX << ",";
+                outFile_ << -pValue->un.gyroscopeUncal.biasZ;
+            }
+            else {
+                outFile_ << pValue->un.gyroscopeUncal.x << ",";
+                outFile_ << pValue->un.gyroscopeUncal.y << ",";
+                outFile_ << pValue->un.gyroscopeUncal.z << ",";
+                outFile_ << pValue->un.gyroscopeUncal.biasX << ",";
+                outFile_ << pValue->un.gyroscopeUncal.biasY << ",";
+                outFile_ << pValue->un.gyroscopeUncal.biasZ;
+            }
+            outFile_ << "\n";
+            break;
+        }
+        case SH2_RAW_MAGNETOMETER: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.rawMagnetometer.x << ",";
+            outFile_ << pValue->un.rawMagnetometer.y << ",";
+            outFile_ << pValue->un.rawMagnetometer.z << "\n";
+            break;
+        }
+        case SH2_MAGNETIC_FIELD_CALIBRATED: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            if (orientationNed_) {
+                outFile_ << pValue->un.magneticField.y << ","; // ENU -> NED
+                outFile_ << pValue->un.magneticField.x << ",";
+                outFile_ << -pValue->un.magneticField.z << ",";
+            }
+            else {
+                outFile_ << pValue->un.magneticField.x << ",";
+                outFile_ << pValue->un.magneticField.y << ",";
+                outFile_ << pValue->un.magneticField.z << ",";
+            }
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_MAGNETIC_FIELD_UNCALIBRATED: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            if (orientationNed_) {
+                outFile_ << pValue->un.magneticFieldUncal.y << ","; // ENU -> NED
+                outFile_ << pValue->un.magneticFieldUncal.x << ",";
+                outFile_ << -pValue->un.magneticFieldUncal.z << ",";
+                outFile_ << pValue->un.magneticFieldUncal.biasY << ","; // ENU -> NED
+                outFile_ << pValue->un.magneticFieldUncal.biasX << ",";
+                outFile_ << -pValue->un.magneticFieldUncal.biasZ << ",";
+            }
+            else {
+                outFile_ << pValue->un.magneticFieldUncal.x << ",";
+                outFile_ << pValue->un.magneticFieldUncal.y << ",";
+                outFile_ << pValue->un.magneticFieldUncal.z << ",";
+                outFile_ << pValue->un.magneticFieldUncal.biasX << ",";
+                outFile_ << pValue->un.magneticFieldUncal.biasY << ",";
+                outFile_ << pValue->un.magneticFieldUncal.biasZ << ",";
+            }
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_ROTATION_VECTOR: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            if (orientationNed_) {
+                outFile_ << pValue->un.rotationVector.real << ",";
+                outFile_ << pValue->un.rotationVector.j << ","; // Convert ENU -> NED
+                outFile_ << pValue->un.rotationVector.i << ",";
+                outFile_ << -pValue->un.rotationVector.k << ",";
+            }
+            else {
+                outFile_ << pValue->un.rotationVector.real << ",";
+                outFile_ << pValue->un.rotationVector.i << ",";
+                outFile_ << pValue->un.rotationVector.j << ",";
+                outFile_ << pValue->un.rotationVector.k << ",";
+            }
+            outFile_ << RadiansToDeg(pValue->un.rotationVector.accuracy) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_GAME_ROTATION_VECTOR: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            if (orientationNed_) {
+                outFile_ << pValue->un.gameRotationVector.real << ",";
+                outFile_ << pValue->un.gameRotationVector.j << ","; // Convert ENU -> NED
+                outFile_ << pValue->un.gameRotationVector.i << ",";
+                outFile_ << -pValue->un.gameRotationVector.k;
+            }
+            else {
+                outFile_ << pValue->un.gameRotationVector.real << ",";
+                outFile_ << pValue->un.gameRotationVector.i << ",";
+                outFile_ << pValue->un.gameRotationVector.j << ",";
+                outFile_ << pValue->un.gameRotationVector.k;
+            }
+            outFile_ << "\n";
+            break;
+        }
+        case SH2_GEOMAGNETIC_ROTATION_VECTOR: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            if (orientationNed_) {
+                outFile_ << pValue->un.geoMagRotationVector.real << ",";
+                outFile_ << pValue->un.geoMagRotationVector.j << ","; // Convert ENU -> NED
+                outFile_ << pValue->un.geoMagRotationVector.i << ",";
+                outFile_ << -pValue->un.geoMagRotationVector.k << ",";
+            }
+            else {
+                outFile_ << pValue->un.geoMagRotationVector.real << ",";
+                outFile_ << pValue->un.geoMagRotationVector.i << ",";
+                outFile_ << pValue->un.geoMagRotationVector.j << ",";
+                outFile_ << pValue->un.geoMagRotationVector.k << ",";
+            }
+            outFile_ << RadiansToDeg(pValue->un.geoMagRotationVector.accuracy) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_PRESSURE: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.pressure.value << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_AMBIENT_LIGHT: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.ambientLight.value << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_HUMIDITY: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.humidity.value << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_PROXIMITY: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.proximity.value << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_TEMPERATURE: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.temperature.value << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_TAP_DETECTOR: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.tapDetector.flags) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_STEP_DETECTOR: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.stepDetector.latency << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_STEP_COUNTER: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.stepCounter.steps << ",";
+            outFile_ << pValue->un.stepCounter.latency << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_SIGNIFICANT_MOTION: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.sigMotion.motion << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_STABILITY_CLASSIFIER: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.stabilityClassifier.classification) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_SHAKE_DETECTOR: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.shakeDetector.shake << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_FLIP_DETECTOR: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.flipDetector.flip << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_PICKUP_DETECTOR: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.pickupDetector.pickup << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_STABILITY_DETECTOR: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.stabilityDetector.stability << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
         case SH2_PERSONAL_ACTIVITY_CLASSIFIER: {
             static SampleIdExtender extender;
             if (extender.isEmpty()) {
@@ -245,33 +657,62 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double currTime) {
             outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
             break;
         }
-
-        case SH2_STEP_DETECTOR: {
+        case SH2_SLEEP_DETECTOR: {
             static SampleIdExtender extender;
             if (extender.isEmpty()) {
                 WriteHeader(id, false);
             }
             WriteSensorReportHeader(id, currTime);
             outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.stepDetector.latency << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.sleepDetector.sleepState) << ",";
             outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
             break;
         }
-
-        case SH2_STEP_COUNTER: {
+        case SH2_TILT_DETECTOR: {
             static SampleIdExtender extender;
             if (extender.isEmpty()) {
                 WriteHeader(id, false);
             }
             WriteSensorReportHeader(id, currTime);
             outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.stepCounter.steps << ",";
-            outFile_ << pValue->un.stepCounter.latency << ",";
+            outFile_ << pValue->un.tiltDetector.tilt << ",";
             outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
             break;
         }
-
-        case SH2_ROTATION_VECTOR: {
+        case SH2_POCKET_DETECTOR: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.pocketDetector.pocket << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_CIRCLE_DETECTOR: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.circleDetector.circle << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_HEART_RATE_MONITOR: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id, false);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            outFile_ << pValue->un.heartRateMonitor.heartRate << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_ARVR_STABILIZED_RV: {
             static SampleIdExtender extender;
             if (extender.isEmpty()) {
                 WriteHeader(id);
@@ -279,17 +720,40 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double currTime) {
             WriteSensorReportHeader(id, currTime);
             outFile_ << extender.extend(pValue->sequence) << ",";
             if (orientationNed_) {
-                outFile_ << pValue->un.rotationVector.real << ",";
-                outFile_ << pValue->un.rotationVector.j << ","; // Convert ENU -> NED
-                outFile_ << pValue->un.rotationVector.i << ",";
-                outFile_ << -pValue->un.rotationVector.k << ",";
-            } else {
-                outFile_ << pValue->un.rotationVector.real << ",";
-                outFile_ << pValue->un.rotationVector.i << ",";
-                outFile_ << pValue->un.rotationVector.j << ",";
-                outFile_ << pValue->un.rotationVector.k << ",";
+                outFile_ << pValue->un.arvrStabilizedRV.real << ",";
+                outFile_ << pValue->un.arvrStabilizedRV.j << ","; // Convert ENU -> NED
+                outFile_ << pValue->un.arvrStabilizedRV.i << ",";
+                outFile_ << -pValue->un.arvrStabilizedRV.k << ",";
             }
-            outFile_ << RadiansToDeg(pValue->un.rotationVector.accuracy) << ",";
+            else {
+                outFile_ << pValue->un.arvrStabilizedRV.real << ",";
+                outFile_ << pValue->un.arvrStabilizedRV.i << ",";
+                outFile_ << pValue->un.arvrStabilizedRV.j << ",";
+                outFile_ << pValue->un.arvrStabilizedRV.k << ",";
+            }
+            outFile_ << RadiansToDeg(pValue->un.arvrStabilizedRV.accuracy) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
+            break;
+        }
+        case SH2_ARVR_STABILIZED_GRV: {
+            static SampleIdExtender extender;
+            if (extender.isEmpty()) {
+                WriteHeader(id);
+            }
+            WriteSensorReportHeader(id, currTime);
+            outFile_ << extender.extend(pValue->sequence) << ",";
+            if (orientationNed_) {
+                outFile_ << pValue->un.arvrStabilizedGRV.real << ",";
+                outFile_ << pValue->un.arvrStabilizedGRV.j << ","; // Convert ENU -> NED
+                outFile_ << pValue->un.arvrStabilizedGRV.i << ",";
+                outFile_ << -pValue->un.arvrStabilizedGRV.k << ",";
+            }
+            else {
+                outFile_ << pValue->un.arvrStabilizedGRV.real << ",";
+                outFile_ << pValue->un.arvrStabilizedGRV.i << ",";
+                outFile_ << pValue->un.arvrStabilizedGRV.j << ",";
+                outFile_ << pValue->un.arvrStabilizedGRV.k << ",";
+            }
             outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
             break;
         }
@@ -320,484 +784,6 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double currTime) {
             outFile_ << "\n";
             break;
         }
-        case SH2_GAME_ROTATION_VECTOR: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            if (orientationNed_) {
-                outFile_ << pValue->un.gameRotationVector.real << ",";
-                outFile_ << pValue->un.gameRotationVector.j << ","; // Convert ENU -> NED
-                outFile_ << pValue->un.gameRotationVector.i << ",";
-                outFile_ << -pValue->un.gameRotationVector.k;
-            } else {
-                outFile_ << pValue->un.gameRotationVector.real << ",";
-                outFile_ << pValue->un.gameRotationVector.i << ",";
-                outFile_ << pValue->un.gameRotationVector.j << ",";
-                outFile_ << pValue->un.gameRotationVector.k;
-            }
-            outFile_ << "\n";
-            break;
-        }
-        case SH2_GEOMAGNETIC_ROTATION_VECTOR: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            if (orientationNed_) {
-                outFile_ << pValue->un.geoMagRotationVector.real << ",";
-                outFile_ << pValue->un.geoMagRotationVector.j << ","; // Convert ENU -> NED
-                outFile_ << pValue->un.geoMagRotationVector.i << ",";
-                outFile_ << -pValue->un.geoMagRotationVector.k << ",";
-            } else {
-                outFile_ << pValue->un.geoMagRotationVector.real << ",";
-                outFile_ << pValue->un.geoMagRotationVector.i << ",";
-                outFile_ << pValue->un.geoMagRotationVector.j << ",";
-                outFile_ << pValue->un.geoMagRotationVector.k << ",";
-            }
-            outFile_ << RadiansToDeg(pValue->un.geoMagRotationVector.accuracy) << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_RAW_ACCELEROMETER: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.rawAccelerometer.x << ",";
-            outFile_ << pValue->un.rawAccelerometer.y << ",";
-            outFile_ << pValue->un.rawAccelerometer.z << "\n";
-            break;
-        }
-        case SH2_RAW_GYROSCOPE: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.rawGyroscope.x << ",";
-            outFile_ << pValue->un.rawGyroscope.y << ",";
-            outFile_ << pValue->un.rawGyroscope.z << ",";
-            outFile_ << pValue->un.rawGyroscope.temperature << "\n";
-            break;
-        }
-        case SH2_RAW_MAGNETOMETER: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.rawMagnetometer.x << ",";
-            outFile_ << pValue->un.rawMagnetometer.y << ",";
-            outFile_ << pValue->un.rawMagnetometer.z << "\n";
-            break;
-        }
-        case SH2_ACCELEROMETER: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            if (orientationNed_) {
-                outFile_ << pValue->un.accelerometer.y << ","; // ENU -> NED
-                outFile_ << pValue->un.accelerometer.x << ",";
-                outFile_ << -pValue->un.accelerometer.z << ",";
-            } else {
-                outFile_ << pValue->un.accelerometer.x << ",";
-                outFile_ << pValue->un.accelerometer.y << ",";
-                outFile_ << pValue->un.accelerometer.z << ",";
-            }
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-        case SH2_GYROSCOPE_UNCALIBRATED: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            if (orientationNed_) {
-                outFile_ << pValue->un.gyroscopeUncal.y << ","; // ENU -> NED
-                outFile_ << pValue->un.gyroscopeUncal.x << ",";
-                outFile_ << -pValue->un.gyroscopeUncal.z << ",";
-                outFile_ << pValue->un.gyroscopeUncal.biasY << ","; // ENU -> NED
-                outFile_ << pValue->un.gyroscopeUncal.biasX << ",";
-                outFile_ << -pValue->un.gyroscopeUncal.biasZ;
-            } else {
-                outFile_ << pValue->un.gyroscopeUncal.x << ",";
-                outFile_ << pValue->un.gyroscopeUncal.y << ",";
-                outFile_ << pValue->un.gyroscopeUncal.z << ",";
-                outFile_ << pValue->un.gyroscopeUncal.biasX << ",";
-                outFile_ << pValue->un.gyroscopeUncal.biasY << ",";
-                outFile_ << pValue->un.gyroscopeUncal.biasZ;
-            }
-            outFile_ << "\n";
-            break;
-        }
-        case SH2_GYROSCOPE_CALIBRATED: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            if (orientationNed_) {
-                outFile_ << pValue->un.gyroscope.y << ","; // ENU -> NED
-                outFile_ << pValue->un.gyroscope.x << ",";
-                outFile_ << -pValue->un.gyroscope.z;
-            } else {
-                outFile_ << pValue->un.gyroscope.x << ",";
-                outFile_ << pValue->un.gyroscope.y << ",";
-                outFile_ << pValue->un.gyroscope.z;
-            }
-            outFile_ << "\n";
-            break;
-        }
-        case SH2_MAGNETIC_FIELD_CALIBRATED: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            if (orientationNed_) {
-                outFile_ << pValue->un.magneticField.y << ","; // ENU -> NED
-                outFile_ << pValue->un.magneticField.x << ",";
-                outFile_ << -pValue->un.magneticField.z << ",";
-            } else {
-                outFile_ << pValue->un.magneticField.x << ",";
-                outFile_ << pValue->un.magneticField.y << ",";
-                outFile_ << pValue->un.magneticField.z << ",";
-            }
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-        case SH2_MAGNETIC_FIELD_UNCALIBRATED: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            if (orientationNed_) {
-                outFile_ << pValue->un.magneticFieldUncal.y << ","; // ENU -> NED
-                outFile_ << pValue->un.magneticFieldUncal.x << ",";
-                outFile_ << -pValue->un.magneticFieldUncal.z << ",";
-                outFile_ << pValue->un.magneticFieldUncal.biasY << ","; // ENU -> NED
-                outFile_ << pValue->un.magneticFieldUncal.biasX << ",";
-                outFile_ << -pValue->un.magneticFieldUncal.biasZ << ",";
-            } else {
-                outFile_ << pValue->un.magneticFieldUncal.x << ",";
-                outFile_ << pValue->un.magneticFieldUncal.y << ",";
-                outFile_ << pValue->un.magneticFieldUncal.z << ",";
-                outFile_ << pValue->un.magneticFieldUncal.biasX << ",";
-                outFile_ << pValue->un.magneticFieldUncal.biasY << ",";
-                outFile_ << pValue->un.magneticFieldUncal.biasZ << ",";
-            }
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_LINEAR_ACCELERATION: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            if (orientationNed_) {
-                outFile_ << pValue->un.linearAcceleration.y << ","; // ENU -> NED
-                outFile_ << pValue->un.linearAcceleration.x << ",";
-                outFile_ << -pValue->un.linearAcceleration.z << ",";
-            } else {
-                outFile_ << pValue->un.linearAcceleration.x << ",";
-                outFile_ << pValue->un.linearAcceleration.y << ",";
-                outFile_ << pValue->un.linearAcceleration.z << ",";
-            }
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_GRAVITY: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            if (orientationNed_) {
-                outFile_ << pValue->un.gravity.y << ","; // ENU -> NED
-                outFile_ << pValue->un.gravity.x << ",";
-                outFile_ << -pValue->un.gravity.z << ",";
-            } else {
-                outFile_ << pValue->un.gravity.x << ",";
-                outFile_ << pValue->un.gravity.y << ",";
-                outFile_ << pValue->un.gravity.z << ",";
-            }
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_ARVR_STABILIZED_RV: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            if (orientationNed_) {
-                outFile_ << pValue->un.arvrStabilizedRV.real << ",";
-                outFile_ << pValue->un.arvrStabilizedRV.j << ","; // Convert ENU -> NED
-                outFile_ << pValue->un.arvrStabilizedRV.i << ",";
-                outFile_ << -pValue->un.arvrStabilizedRV.k << ",";
-            } else {
-                outFile_ << pValue->un.arvrStabilizedRV.real << ",";
-                outFile_ << pValue->un.arvrStabilizedRV.i << ",";
-                outFile_ << pValue->un.arvrStabilizedRV.j << ",";
-                outFile_ << pValue->un.arvrStabilizedRV.k << ",";
-            }
-            outFile_ << RadiansToDeg(pValue->un.arvrStabilizedRV.accuracy) << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_ARVR_STABILIZED_GRV: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            if (orientationNed_) {
-                outFile_ << pValue->un.arvrStabilizedGRV.real << ",";
-                outFile_ << pValue->un.arvrStabilizedGRV.j << ","; // Convert ENU -> NED
-                outFile_ << pValue->un.arvrStabilizedGRV.i << ",";
-                outFile_ << -pValue->un.arvrStabilizedGRV.k << ",";
-            } else {
-                outFile_ << pValue->un.arvrStabilizedGRV.real << ",";
-                outFile_ << pValue->un.arvrStabilizedGRV.i << ",";
-                outFile_ << pValue->un.arvrStabilizedGRV.j << ",";
-                outFile_ << pValue->un.arvrStabilizedGRV.k << ",";
-            }
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_TAP_DETECTOR: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << static_cast<uint32_t>(pValue->un.tapDetector.flags) << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_CIRCLE_DETECTOR: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.circleDetector.circle << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_FLIP_DETECTOR: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.flipDetector.flip << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_PICKUP_DETECTOR: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.pickupDetector.pickup << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_POCKET_DETECTOR: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.pocketDetector.pocket << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_TILT_DETECTOR: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.tiltDetector.tilt << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_SHAKE_DETECTOR: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.shakeDetector.shake << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_SLEEP_DETECTOR: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << static_cast<uint32_t>(pValue->un.sleepDetector.sleepState) << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_STABILITY_CLASSIFIER: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << static_cast<uint32_t>(pValue->un.stabilityClassifier.classification) << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_STABILITY_DETECTOR: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.stabilityDetector.stability << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_PRESSURE: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.pressure.value << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_AMBIENT_LIGHT: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.ambientLight.value << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_HUMIDITY: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.humidity.value << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_PROXIMITY: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.proximity.value << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_TEMPERATURE: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.temperature.value << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_SIGNIFICANT_MOTION: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.sigMotion.motion << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
-        case SH2_HEART_RATE_MONITOR: {
-            static SampleIdExtender extender;
-            if (extender.isEmpty()) {
-                WriteHeader(id, false);
-            }
-            WriteSensorReportHeader(id, currTime);
-            outFile_ << extender.extend(pValue->sequence) << ",";
-            outFile_ << pValue->un.heartRateMonitor.heartRate << ",";
-            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
-            break;
-        }
-
         default:
             break;
     }

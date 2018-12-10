@@ -18,13 +18,6 @@
 #ifndef LOGGER_APP_H
 #define LOGGER_APP_H
 
-extern "C" {
-#include "sh2.h"
-#include "sh2_SensorValue.h"
-#include "sh2_err.h"
-#include "sh2_hal.h"
-}
-
 #include <list>
 #include <stdint.h>
 
@@ -77,19 +70,12 @@ public:
 
     int finish();
 
-    // ---------------------------------------------------------------------------------------------
-    // STATIC METHODS
-    // ---------------------------------------------------------------------------------------------
-    static int findSensorIdByName(char const * name);
-
 private:
     // ---------------------------------------------------------------------------------------------
     // VARIABLES
     // ---------------------------------------------------------------------------------------------
-    bool firstReportReceived_ = false;
-    uint64_t lastReportTime_us_;
-
     sensorList_t * pSensorsToEnable_;
+    uint64_t lastReportTime_us_;
 
     // ---------------------------------------------------------------------------------------------
     // PRIVATE METHODS

@@ -14,6 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+extern "C" {
+#include "sh2.h"
+#include "sh2_SensorValue.h"
+#include "sh2_err.h"
+#include "sh2_hal.h"
+}
 
 #include "LoggerApp.h"
 #include "LoggerUtil.h"
@@ -291,7 +297,7 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, D
 
     // Initialization Process complete
     // Transition to RUN state and observe sensor data
-    firstReportReceived_ = false;
+    lastReportTime_us_ = 0;
     state_ = State_e::Run;
 
     return 0;
@@ -421,8 +427,7 @@ void LoggerApp::GetSensorConfiguration(sh2_SensorId_t sensorId, sh2_SensorConfig
 void LoggerApp::ReportProgress() {
     uint64_t currSysTime_us;
 
-    if (!firstReportReceived_) {
-        firstReportReceived_ = true;
+    if (lastReportTime_us_ == 0) {
         lastReportTime_us_ = timer_->getTimestamp_us();
     }
 

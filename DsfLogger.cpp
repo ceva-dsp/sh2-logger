@@ -39,13 +39,13 @@ struct sensorDsfHeader_s {
 static const sensorDsfHeader_s SensorDsfHeader_[] = {
     { "Reserved", "" },                                                                                         // 0x00
     { "Accelerometer", "LIN_ACC_GRAVITY[xyz]{m/s^2},STATUS[x]" },                                               // 0x01
-    { "Gyroscope", "ANG_VEL[xyz]{rad/s}" },                                                                     // 0x02
+    { "Gyroscope", "ANG_VEL[xyz]{rad/s},STATUS[x]" },                                                           // 0x02
     { "MagneticField", "MAG[xyz]{m/s^2},STATUS[x]" },                                                           // 0x03
     { "LinearAcceleration", "LIN_ACC[xyz]{m/s^2},STATUS[x]" },                                                  // 0x04
     { "RotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion},ANG_POS_ACCURACY[x]{deg},STATUS[x]" },                // 0x05
     { "Gravity", "GRAVITY[xyz]{m/s^2},STATUS[x]" },                                                             // 0x06
-    { "UncalibratedGyroscope", "ANG_VEL[xyz]{rad/s},BIAS[xyz]{rad/s}" },                                        // 0x07
-    { "GameRotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion}" },                                               // 0x08
+    { "UncalibratedGyroscope", "ANG_VEL[xyz]{rad/s},BIAS[xyz]{rad/s},STATUS[x]" },                              // 0x07
+    { "GameRotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion},STATUS[x]" },                                     // 0x08
     { "GeomagneticRotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion},ANG_POS_ACCURACY[x]{deg},STATUS[x]" },     // 0x09
     { "Pressure", "PRESSURE[x]{hPa},STATUS[x]" },                                                               // 0x0A
     { "AmbientLight", "AMBIENT_LIGHT[x]{lux},STATUS[x]" },                                                      // 0x0B
@@ -325,14 +325,14 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double currTime) {
             if (orientationNed_) {
                 outFile_ << pValue->un.gyroscope.y << ","; // ENU -> NED
                 outFile_ << pValue->un.gyroscope.x << ",";
-                outFile_ << -pValue->un.gyroscope.z;
+                outFile_ << -pValue->un.gyroscope.z << ",";
             }
             else {
                 outFile_ << pValue->un.gyroscope.x << ",";
                 outFile_ << pValue->un.gyroscope.y << ",";
-                outFile_ << pValue->un.gyroscope.z;
+                outFile_ << pValue->un.gyroscope.z << ",";
             }
-            outFile_ << "\n";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
             break;
         }
         case SH2_GYROSCOPE_UNCALIBRATED: {
@@ -356,9 +356,9 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double currTime) {
                 outFile_ << pValue->un.gyroscopeUncal.z << ",";
                 outFile_ << pValue->un.gyroscopeUncal.biasX << ",";
                 outFile_ << pValue->un.gyroscopeUncal.biasY << ",";
-                outFile_ << pValue->un.gyroscopeUncal.biasZ;
+                outFile_ << pValue->un.gyroscopeUncal.biasZ << ",";
             }
-            outFile_ << "\n";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
             break;
         }
         case SH2_RAW_MAGNETOMETER: {
@@ -461,7 +461,7 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double currTime) {
                 outFile_ << pValue->un.gameRotationVector.j << ",";
                 outFile_ << pValue->un.gameRotationVector.k;
             }
-            outFile_ << "\n";
+            outFile_ << static_cast<uint32_t>(pValue->status) << "\n";
             break;
         }
         case SH2_GEOMAGNETIC_ROTATION_VECTOR: {

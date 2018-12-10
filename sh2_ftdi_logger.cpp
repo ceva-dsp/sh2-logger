@@ -174,21 +174,24 @@ int main(int argc, const char* argv[]) {
     pBatchFilePath_ = 0;
     argError = true;
 
-    // Process the 'batch' option. 
+    // Process the argv[] arguments
     for (int i = 1, j = 0; i < argc; i++) {
         const char* arg = argv[i];
         if (arg[0] == '-') {
+            // Generate json configuration file template
             if (strstr(arg, "--template") == arg) {
                 // Write a configuration file template
                 std::cout << "\nGenerate a configuration file template \"" << DefaultJsonName << "\". \n";
                 std::ofstream ofile(DefaultJsonName);
                 ofile << std::setw(4) << loggerJson_ << std::endl;
+                // Exit after writing the template
                 return 0;
             } else {
                 break;
             }
 
         } else {
+            // Process the 'batch' option. 
             if (strstr(arg, ".json")) {
                 pBatchFilePath_ = arg;
                 if (ParseJsonBatchFile(&appConfig)) {
@@ -254,16 +257,17 @@ int main(int argc, const char* argv[]) {
 
 	std::cout << "\nProcessing Sensor Reports . . ." << std::endl;
 
-	uint64_t curTime_us_ = timer_.getTimestamp_us();
-	uint64_t lastChecked_us_ = curTime_us_;
+	uint64_t currSysTime_us = timer_.getTimestamp_us();
+	uint64_t lastChecked_us = currSysTime_us;
 
     while (runApp_) {
 
 #ifdef _WIN32
-		curTime_us_ = timer_.getTimestamp_us();
+        currSysTime_us = timer_.getTimestamp_us();
 		
-		if (curTime_us_ - lastChecked_us_ > 200000) {
-            lastChecked_us_ = curTime_us_;
+		if (currSysTime_us - lastChecked_us > 200000) {
+            lastChecked_us = currSysTime_us;
+
             INPUT_RECORD event;
             DWORD count;
 

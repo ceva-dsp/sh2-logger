@@ -39,7 +39,7 @@ namespace LoggerUtil {
     // ---------------------------------------------------------------------------------------------
     // DATA TYPE
     // ---------------------------------------------------------------------------------------------
-    struct frsString_s {
+    struct frsIdMap_s {
         uint16_t recordId;
         char const* name;
     };
@@ -123,7 +123,7 @@ namespace LoggerUtil {
     static_assert((sizeof(SensorSpec) / sizeof(sensorSpec_s)) == (SH2_MAX_SENSOR_ID + 1),
         "Const variable size match failed");
 
-    static const frsString_s Bno080FrsRecords[] = {
+    static const frsIdMap_s Bno080FrsRecords[] = {
         // { STATIC_CALIBRATION_AGM, "scd" },
         { NOMINAL_CALIBRATION, "nominal_scd" },
         { DYNAMIC_CALIBRATION, "dcd" },
@@ -165,7 +165,7 @@ namespace LoggerUtil {
         { GYRO_INTEGRATED_RV_CONFIG, "gyro_integrated_rotation_vector_configuration" },
     };
 
-    static const uint8_t NumBno080FrsRecords = sizeof(Bno080FrsRecords) / sizeof(frsString_s);
+    static const uint8_t NumBno080FrsRecords = sizeof(Bno080FrsRecords) / sizeof(frsIdMap_s);
 
 
     // ---------------------------------------------------------------------------------------------

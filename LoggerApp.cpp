@@ -32,10 +32,10 @@
 // DEFINES AND MACROS
 // =================================================================================================
 enum class State_e {
-    Idle,
-    Reset,
-    Startup,
-    Run,
+    Idle,    // Initial state
+    Reset,   // Target device has been reset. Waiting for the startup response from the system.
+    Startup, // Target device started up successfully. Ready to be configured.
+    Run,     // Configurations complete. Start collecting sensor data.
 };
 
 #ifdef _WIN32
@@ -171,8 +171,11 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, D
     ftdiHal_ = ftdiHal;
     logger_ = logger;
 
+    // ---------------------------------------------------------------------------------------------
     // Open SH2/SHTP connection
-    state_ = State_e::Reset;
+    // ---------------------------------------------------------------------------------------------
+    state_ = State_e::Reset; // Enter 'Reset' state
+
     std::cout << "INFO: Open a session with a SensorHub \n";
     status = sh2_open(&sh2Hal_, myEventCallback, NULL);
     if (status != SH2_OK) {
@@ -180,41 +183,53 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, D
         return -1;
     }
 
-    int retryCnt = 0;
+    // Stay in loop while waiting for system reset to complete
+    int retryCnt = 3; // Number of retry allowed is 3
     while (true) {
 		if (!WaitForResetComplete(RESET_TIMEOUT_)) {
+            // Reset Timeout expired. Retry. 
             std::cout << "ERROR: Reset timeout. Retry ..\n";
-
-            if (retryCnt++ >= 3) {
+            if (retryCnt-- <= 0) {
                 return 1;
             }
             ftdiHal_->softreset();
+
         } else {
             break;
         }
     }
 
+    // ---------------------------------------------------------------------------------------------
     // Set callback for Sensor Data
+    // ---------------------------------------------------------------------------------------------
     status = sh2_setSensorCallback(mySensorCallback, NULL);
     if (status != SH2_OK) {
         std::cout << "ERROR: Failed to set Sensor callback\n";
         return -1;
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // Clear DCD and Reset
+    // ---------------------------------------------------------------------------------------------
     if (appConfig->clearDcd) {
         std::cout << "INFO: Clear DCD and Reset\n";
         uint32_t dummy = 0;
+        // Clear DCD FRS record
         sh2_setFrs(DYNAMIC_CALIBRATION, &dummy, 0);
 
+        // Clear DCD and Reset the target system
         state_ = State_e::Reset;
         sh2_clearDcdAndReset();
+        // Wait for the system reset to complete
         if (!WaitForResetComplete(RESET_TIMEOUT_)) {
             std::cout << "ERROR: Failed to reset a SensorHub - Timeout \n";
             return -1;
         }
     }
 
+    // ---------------------------------------------------------------------------------------------
     // Get Product IDs
+    // ---------------------------------------------------------------------------------------------
     std::cout << "INFO: Get Product IDs\n";
     sh2_ProductIds_t productIds;
     status = sh2_getProdIds(&productIds);
@@ -224,7 +239,9 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, D
     }
     logger_->logProductIds(productIds);
 
+    // ---------------------------------------------------------------------------------------------
     // Set DCD Auto Save
+    // ---------------------------------------------------------------------------------------------
     std::cout << "INFO: Set DCD Auto Save\n";
     status = sh2_setDcdAutoSave(appConfig->dcdAutoSave);
     if (status != SH2_OK) {
@@ -232,20 +249,25 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, D
         return -1;
     }
 
-    // Set Calibration Config
-    std::cout << "INFO: Set Calibration Config\n";
+    // ---------------------------------------------------------------------------------------------
+    // Set Calibration Configuration
+    // ---------------------------------------------------------------------------------------------
+    std::cout << "INFO: Set Calibration Configuration\n";
     status = sh2_setCalConfig(appConfig->calEnableMask);
     if (status != SH2_OK) {
-        std::cout << "ERROR: Failed to set calibration config\n";
+        std::cout << "ERROR: Failed to set calibration configuration\n";
         return -1;
     }
 
+    // ---------------------------------------------------------------------------------------------
     // Get Device FRS records
+    // ---------------------------------------------------------------------------------------------
     std::cout << "INFO: Get FRS Records\n";
     LogAllFrsRecords();
 
+    // ---------------------------------------------------------------------------------------------
     // Enable Sensors
-
+    // ---------------------------------------------------------------------------------------------
     // Check if a config file is specified.
     pSensorsToEnable_ = appConfig->pSensorsToEnable;
     if (pSensorsToEnable_ == 0 || pSensorsToEnable_->empty()) {
@@ -266,7 +288,9 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, D
         // std::cout << " (" << config.reportInterval_us << "us)\n";
         sh2_setSensorConfig(it->sensorId, &config);
     }
-    
+
+    // Initialization Process complete
+    // Transition to RUN state and observe sensor data
     firstReportReceived_ = false;
     state_ = State_e::Run;
 
@@ -290,7 +314,9 @@ int LoggerApp::service() {
 // -------------------------------------------------------------------------------------------------
 int LoggerApp::finish() {
 
+    // ---------------------------------------------------------------------------------------------
     // Turn off sensors
+    // ---------------------------------------------------------------------------------------------
     std::cout << "INFO: Disable Sensors" << std::endl;
     sh2_SensorConfig_t config;
     memset(&config, 0, sizeof(config));
@@ -309,11 +335,10 @@ int LoggerApp::finish() {
     */
 
     std::cout << "INFO: Closing the SensorHub session" << std::endl;
-    sh2_close();
-    logger_->finish();
+    sh2_close();        // Close SH2 driver
+    logger_->finish();  // Close (DSF) Logger instance
 
     std::cout << "INFO: Shutdown complete" << std::endl;
-
     return 1;
 }
 
@@ -366,17 +391,20 @@ static uint32_t Sh2HalGetTimeUs(sh2_Hal_t* self) {
 bool LoggerApp::WaitForResetComplete(int loops) {
     std::cout << "INFO: Waiting for System Reset ";
 
-    for (int resetTime = 0; state_ == State_e::Reset; ++resetTime) {
-		// if (resetTime % 100 == 99) {
-		if (resetTime % 10000 == 9999) {
+    for (int resetCounter = 0; state_ == State_e::Reset; ++resetCounter) {
+        // Print periodic progress indicator 
+		if (resetCounter % 10000 == 9999) {
 			std::cout << ".";
         }
-        if (resetTime >= loops) {
+        // Check resetCounter against 'loops' limit
+        if (resetCounter >= loops) {
             std::cout << "\n";
             return false;
         }
+
         sh2_service();
     }
+    // state_ has been updated before resetCounter reaches 'loops' limit
     return true;
 }
 
@@ -444,7 +472,7 @@ void LoggerApp::LogAllFrsRecords() {
         LogFrsRecord(NOMINAL_CALIBRATION, "scd");
     }
 
-    const LoggerUtil::frsString_s* pFrs;
+    const LoggerUtil::frsIdMap_s* pFrs;
     for (int i = 0; i < LoggerUtil::NumBno080FrsRecords; i++) {
         pFrs = &LoggerUtil::Bno080FrsRecords[i];
         LogFrsRecord(pFrs->recordId, pFrs->name);

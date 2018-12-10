@@ -23,6 +23,7 @@
 #include "TimerService.h"
 #include "DsfLogger.h"
 #include "LoggerApp.h"
+#include "LoggerUtil.h"
 
 #ifdef _WIN32
 #include "FtdiHalWin.h"
@@ -369,7 +370,7 @@ bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
 
             for (json::iterator sl = it.value().begin(); sl != it.value().end(); ++sl) {
                 LoggerApp::SensorFeatureSet_s config;
-                config.sensorId = (sh2_SensorId_t)LoggerApp::findSensorIdByName(sl.key().c_str());
+                config.sensorId = (sh2_SensorId_t)LoggerUtil::findSensorIdByName(sl.key().c_str());
                 float rate = sl.value();
                 config.reportInterval_us = static_cast<uint32_t>((1e6 / rate) + 0.5);
 

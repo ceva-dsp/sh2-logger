@@ -16,6 +16,7 @@
  */
 
 #include "LoggerApp.h"
+#include "LoggerUtil.h"
 #include "DsfLogger.h"
 #include "FtdiHal.h"
 #include "TimerService.h"
@@ -46,15 +47,6 @@ enum class State_e {
 // =================================================================================================
 // DATA TYPES
 // =================================================================================================
-struct frsString_s {
-    uint16_t recordId;
-    char const* name;
-};
-
-struct sensorSpec_s {
-    char const* name;
-    const sh2_SensorConfig_t* config;
-};
 
 // =================================================================================================
 // LOCAL FUNCTION PROTOTYPES
@@ -85,28 +77,6 @@ static uint64_t sensorEventsReceived_ = 0;
 // =================================================================================================
 // CONST LOCAL VARIABLES
 // =================================================================================================
-// Sensors which requires special configuration
-static const sh2_SensorConfig_t DefaultConfigSpec_ = { false, false, false, false, 0, 0, 0, 0 };
-
-static const sh2_SensorConfig_t PacConfigSpec_ = { false, false, false, false, 0, 0, 0, 511 };
-static const sh2_SensorConfig_t StabilityClassifierConfigSpec_ = { true, true, false, false, 0, 0, 0, 0 };
-static const sh2_SensorConfig_t StepDetectorConfigSpec_ = { true, false, false, false, 0, 0, 0, 0 };
-static const sh2_SensorConfig_t StepCounterConfigSpec_ = { true, false, false, false, 0, 0, 0, 0 };
-static const sh2_SensorConfig_t PressureConfigSpec_ = { false, false, false, false, 0, 0, 0, 0 };
-static const sh2_SensorConfig_t AmbientLightConfigSpec_ = { true, true, false, false, (uint16_t)(0.1 * (2 ^ 6)), 0, 0, 0 };
-static const sh2_SensorConfig_t TemperatureConfigSpec_ = { true, true, false, false, (uint16_t)(0.1 * (2 ^ 7)), 0, 0, 0 };
-static const sh2_SensorConfig_t HumidityConfigSpec_ = { true, true, false, false, (uint16_t)(0.1 * (2 ^ 8)), 0, 0, 0 };
-static const sh2_SensorConfig_t ProximityConfigSpec_ = { true, true, true, true, (uint16_t)(1.0 * (2 ^ 4)), 0, 0, 0 };
-static const sh2_SensorConfig_t TapDetectorConfigSpec_ = { true, false, false, false, 0, 0, 0, 0 };
-static const sh2_SensorConfig_t ShakeDetectorConfigSpec_ = { true, false, true, true, 0, 0, 0, 0 };
-static const sh2_SensorConfig_t FlipDetectorConfigSpec_ = { true, false, true, true, 0, 0, 0, 0 };
-static const sh2_SensorConfig_t StabilityDetectorConfigSpec_ = { true, false, false, false, 0, 0, 0, 0 };
-static const sh2_SensorConfig_t SleepDetectorConfigSpec_ = { true, true, true, true, 0, 0, 0, 0 };
-static const sh2_SensorConfig_t TiltDetectorConfigSpec_ = { true, false, true, true, 0, 0, 0, 0 };
-static const sh2_SensorConfig_t PocketDetectorConfigSpec_ = { true, false, true, true, 0, 0, 0, 0 };
-static const sh2_SensorConfig_t CircleDetectorConfigSpec_ = { true, false, true, true, 0, 0, 0, 0 };
-
-
 static sh2_Hal_t sh2Hal_ = {
 	Sh2HalOpen,
 	Sh2HalClose,
@@ -114,98 +84,6 @@ static sh2_Hal_t sh2Hal_ = {
 	Sh2HalWrite,
 	Sh2HalGetTimeUs,
 };
-
-static const frsString_s bno080Frs_[] = {
-        // { STATIC_CALIBRATION_AGM, "scd" },
-        {NOMINAL_CALIBRATION, "nominal_scd"},
-        {DYNAMIC_CALIBRATION, "dcd"},
-        {STATIC_CALIBRATION_SRA, "sra_scd"},
-        {NOMINAL_CALIBRATION_SRA, "sra_nominal_scd"},
-
-        {ME_POWER_MGMT, "motion_engine_power_management"},
-        {SYSTEM_ORIENTATION, "system_orientation"},
-        {ACCEL_ORIENTATION, "accelerometer_orientation"},
-        {SCREEN_ACCEL_ORIENTATION, "sra_accelerometer_orientation"},
-        {GYROSCOPE_ORIENTATION, "gyroscope_orientation"},
-        {MAGNETOMETER_ORIENTATION, "magnetometer_orientation"},
-        {ARVR_STABILIZATION_RV, "arvr_rotation_vector"},
-        {ARVR_STABILIZATION_GRV, "arvr_game_rotation_vector"},
-
-        // {TAP_DETECT_CONFIG, "tap_detector_configuration"},
-        {SIG_MOTION_DETECT_CONFIG, "significant_motion_detector_configuration"},
-        {SHAKE_DETECT_CONFIG, "shake_detector_configuration"},
-        {MAX_FUSION_PERIOD, "maximum_fusion_period"},
-        {SERIAL_NUMBER, "serial_number"},
-        {ES_PRESSURE_CAL, "pressure_calibration"},
-        {ES_TEMPERATURE_CAL, "temperature_calibration"},
-        {ES_HUMIDITY_CAL, "humidity_calibration"},
-        {ES_AMBIENT_LIGHT_CAL, "ambient_light_calibration"},
-        {ES_PROXIMITY_CAL, "proximity_calibration"},
-        {ALS_CAL, "ambient_light_special_calibration"},
-        {PROXIMITY_SENSOR_CAL, "proximity_special_calibration"},
-        {PICKUP_DETECTOR_CONFIG, "pickup_detector_configuration"},
-        {FLIP_DETECTOR_CONFIG, "flip_detector_configuration"},
-        {STABILITY_DETECTOR_CONFIG, "stability_detector_configuration"},
-        {ACTIVITY_TRACKER_CONFIG, "activity_tracker_configuration"},
-        {SLEEP_DETECTOR_CONFIG, "sleep_detector_configuration"},
-        {TILT_DETECTOR_CONFIG, "tilt_detector_configuration"},
-        {POCKET_DETECTOR_CONFIG, "pocket_detector_configuration"},
-        {CIRCLE_DETECTOR_CONFIG, "circle_detector_configuration"},
-        {USER_RECORD, "user_record"},
-        {ME_TIME_SOURCE_SELECT, "motion_engine_time_source_selection"},
-        {UART_FORMAT, "uart_output_format_selection"},
-        {GYRO_INTEGRATED_RV_CONFIG, "gyro_integrated_rotation_vector_configuration"},
-};
-
-
-static const sensorSpec_s SensorSpec_[] = {
-    {"Reserved", &DefaultConfigSpec_},                      // 0x00
-    {"Accelerometer", &DefaultConfigSpec_ },                // 0x01
-    {"Gyroscope", &DefaultConfigSpec_ },                    // 0x02
-    {"Magnetic Field", &DefaultConfigSpec_ },               // 0x03
-    {"Linear Acceleration", &DefaultConfigSpec_ },          // 0x04
-    {"Rotation Vector", &DefaultConfigSpec_ },              // 0x05
-    {"Gravity", &DefaultConfigSpec_ },                      // 0x06
-    {"Uncalibrated Gyroscope", &DefaultConfigSpec_ },       // 0x07
-    {"Game Rotation Vector", &DefaultConfigSpec_ },         // 0x08
-    {"Geomagnetic Rotation Vector", &DefaultConfigSpec_ },  // 0x09
-    {"Pressure", &PressureConfigSpec_ },                    // 0x0A
-    {"Ambient Light", &AmbientLightConfigSpec_ },           // 0x0B
-    {"Humidity", &HumidityConfigSpec_ },                    // 0x0C
-    {"Proximity", &ProximityConfigSpec_ },                  // 0x0D
-    {"Temperature", &TemperatureConfigSpec_ },              // 0x0E
-    {"Uncalibrated MagneticField", &DefaultConfigSpec_ },   // 0x0F
-    {"Tap Detector", &TapDetectorConfigSpec_ },             // 0x10
-    {"Step Counter", &StepCounterConfigSpec_ },             // 0x11
-    {"Significant Motion", &DefaultConfigSpec_ },           // 0x12
-    {"Stability Classifier", &StabilityClassifierConfigSpec_ },     // 0x13
-    {"Raw Accelerometer", &DefaultConfigSpec_ },            // 0x14
-    {"Raw Gyroscope", &DefaultConfigSpec_ },                // 0x15
-    {"Raw Magnetometer", &DefaultConfigSpec_ },             // 0x16
-    {"Reserved", &DefaultConfigSpec_ },                     // 0x17
-    {"Step Detector", &StepDetectorConfigSpec_ },           // 0x18
-    {"Shake Detector", &ShakeDetectorConfigSpec_ },         // 0x19
-    {"Flip Detector", &FlipDetectorConfigSpec_ },           // 0x1A
-    {"Pickup Detector", &DefaultConfigSpec_ },              // 0x1B
-    {"Stability Detector", &StabilityDetectorConfigSpec_ }, // 0x1C
-    {"Reserved", &DefaultConfigSpec_ },                     // 0x1D
-    {"Personal Activity Classifier", &PacConfigSpec_ },     // 0x1E
-    {"Sleep Detector", &SleepDetectorConfigSpec_ },         // 0x1F
-    {"Tilt Detector", &TiltDetectorConfigSpec_ },           // 0x20
-    {"Pocket Detector", &PocketDetectorConfigSpec_ },       // 0x21
-    {"Circle Detector", &CircleDetectorConfigSpec_ },       // 0x22
-    {"Heart Rate Monitor", &DefaultConfigSpec_ },           // 0x23
-    {"Reserved", &DefaultConfigSpec_ },                     // 0x24
-    {"Reserved", &DefaultConfigSpec_ },                     // 0x25
-    {"Reserved", &DefaultConfigSpec_ },                     // 0x26
-    {"Reserved", &DefaultConfigSpec_ },                     // 0x27
-    {"ARVR Stabilized Rotation Vector", &DefaultConfigSpec_},      // 0x28
-    {"ARVR Stabilized GameRotation Vector", &DefaultConfigSpec_ }, // 0x29
-    {"Gyro Rotation Vector", &DefaultConfigSpec_ },         // 0x2A
-    {"IZRO Motion Request", &DefaultConfigSpec_ },          // 0x2B
-};
-static_assert((sizeof(SensorSpec_) / sizeof(sensorSpec_s)) == (SH2_MAX_SENSOR_ID + 1), 
-    "Const variable size match failed");
 
 
 // =================================================================================================
@@ -439,20 +317,6 @@ int LoggerApp::finish() {
     return 1;
 }
 
-// -------------------------------------------------------------------------------------------------
-// LoggerApp::findSensorIdByName
-// -------------------------------------------------------------------------------------------------
-int LoggerApp::findSensorIdByName(char const * name) {
-
-    for (int i = 0; i <= SH2_MAX_SENSOR_ID; i++) {
-        if (strcmp(name, SensorSpec_[i].name) == 0) {
-            return i;
-        }
-    }
-    // Return an invalid Sensor ID if no sensor is matched.
-    return SH2_MAX_SENSOR_ID + 1;
-}
-
 
 // =================================================================================================
 // LOCAL FUNCTIONS
@@ -520,7 +384,7 @@ bool LoggerApp::WaitForResetComplete(int loops) {
 // LoggerApp::GetSensorConfiguration
 // -------------------------------------------------------------------------------------------------
 void LoggerApp::GetSensorConfiguration(sh2_SensorId_t sensorId, sh2_SensorConfig_t* pConfig) {
-    memcpy(pConfig, SensorSpec_[sensorId].config, sizeof(sh2_SensorConfig_t));
+    memcpy(pConfig, LoggerUtil::SensorSpec[sensorId].config, sizeof(sh2_SensorConfig_t));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -580,9 +444,9 @@ void LoggerApp::LogAllFrsRecords() {
         LogFrsRecord(NOMINAL_CALIBRATION, "scd");
     }
 
-    const frsString_s* pFrs;
-    for (int i = 0; i < sizeof(bno080Frs_) / sizeof(frsString_s); i++) {
-        pFrs = &bno080Frs_[i];
+    const LoggerUtil::frsString_s* pFrs;
+    for (int i = 0; i < LoggerUtil::NumBno080FrsRecords; i++) {
+        pFrs = &LoggerUtil::Bno080FrsRecords[i];
         LogFrsRecord(pFrs->recordId, pFrs->name);
     }
 }

@@ -33,6 +33,7 @@ extern "C" {
 class DsfLogger {
 public:
     DsfLogger(){};
+    ~DsfLogger(){};
 
     bool init(char const* filePath, bool ned);
     void finish();
@@ -45,13 +46,18 @@ public:
     void logSensorValue(sh2_SensorValue_t* pEvent, double currTime);
 
 private:
-    double const PI = 3.1415926535897932384626433832795;
-
+    // ---------------------------------------------------------------------------------------------
+    // VARIABLES
+    // ---------------------------------------------------------------------------------------------
     std::ofstream outFile_;
     bool orientationNed_;
 
-    void LogHeader(uint8_t sensorId, bool orientation = true);
-    void LogReportCommon(uint32_t sensorId, double currTime);
+    // ---------------------------------------------------------------------------------------------
+    // PRIVATE METHODS
+    // ---------------------------------------------------------------------------------------------
+    double RadiansToDeg(float value);
+    void WriteHeader(uint8_t sensorId, bool orientation = true);
+    void WriteSensorReportHeader(uint32_t sensorId, double currTime);
 };
 
 #endif // DSF_LOGGER_H

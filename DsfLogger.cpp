@@ -142,16 +142,18 @@ void DsfLogger::logAsyncEvent(sh2_AsyncEvent_t* pEvent, double timestamp) {
             // Log the sensor reporting interval
             sh2_SensorId_t sensorId = pEvent->sh2SensorConfigResp.sensorId;
             // Ensure the Channel definition is written before the period is reported.
-            if (extenders_[sensorId]->isEmpty()) {
-                WriteChannelDefinition(sensorId);
-                extenders_[sensorId]->extend(0);
+            if (extenders_[sensorId]) {
+                if (extenders_[sensorId]->isEmpty()) {
+                    WriteChannelDefinition(sensorId);
+                    extenders_[sensorId]->extend(0);
+                }
+                outFile_ << "$" << static_cast<int32_t>(sensorId) << " ";
+                outFile_ << std::fixed << std::setprecision(9) << timestamp << ", ";
+                outFile_.unsetf(std::ios_base::floatfield);
+                outFile_ << "period(";
+                outFile_ << (pEvent->sh2SensorConfigResp.sensorConfig.reportInterval_us / 1000000.0);
+                outFile_ << ")\n";
             }
-            outFile_ << "$" << static_cast<int32_t>(sensorId) << " ";
-            outFile_ << std::fixed << std::setprecision(9) << timestamp << ", ";
-            outFile_.unsetf(std::ios_base::floatfield);
-            outFile_ << "period(";
-            outFile_ << (pEvent->sh2SensorConfigResp.sensorConfig.reportInterval_us / 1000000.0);
-            outFile_ << ")\n";
             break;
         }
         default:

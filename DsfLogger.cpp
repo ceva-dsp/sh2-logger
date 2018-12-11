@@ -645,6 +645,6 @@ void DsfLogger::WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExten
     outFile_ << "." << static_cast<uint32_t>(pValue->sensorId) << " ";
     outFile_ << std::fixed << std::setprecision(9) << timestamp << ",";
     outFile_.unsetf(std::ios_base::floatfield);
-    outFile_ << static_cast<uint32_t>(pValue->status) << ",";
     outFile_ << extender->extend(pValue->sequence) << ",";
+    outFile_ << static_cast<uint32_t>(pValue->status) << ",";
 }

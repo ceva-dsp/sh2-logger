@@ -445,7 +445,7 @@ void LoggerApp::ReportProgress() {
             << " Duration: " << h << ":" << std::setw(2) << std::setfill('0') << m << ":"
             << std::setprecision(2) << s << " "
             << " Rate: " << std::fixed << std::setprecision(2)
-            << sensorEventsReceived_ / deltaT << " Hz" << std::endl;
+            << sensorEventsReceived_ / deltaT << " Samples per seconds" << std::endl;
     }
 }
 

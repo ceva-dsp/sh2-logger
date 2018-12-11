@@ -80,7 +80,13 @@ static const sensorDsfHeader_s SensorDsfHeader_[] = {
     { "ARVRStabilizedRotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion},ANG_POS_ACCURACY[x]{deg}" },  // 0x28
     { "ARVRStabilizedGameRotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion}" },                       // 0x29
     { "GyroIntegratedRV", "ANG_POS_GLOBAL[wxyz]{quaternion},ANG_VEL[xyz]{rad/s}" },                   // 0x2A
+    { "MotionRequest", "MOTION_INTENT[x]{state},MOTION_REQUEST[x]{state}" },                          // 0x2B
 };
+
+static_assert((sizeof(SensorDsfHeader_) / sizeof(sensorDsfHeader_s)) == (SH2_MAX_SENSOR_ID + 1),
+    "Const variable size match failed");
+
+static SampleIdExtender * extenders_[SH2_MAX_SENSOR_ID + 1];
 
 
 // =================================================================================================
@@ -92,6 +98,14 @@ static const sensorDsfHeader_s SensorDsfHeader_[] = {
 bool DsfLogger::init(char const* filePath, bool ned) {
     outFile_.open(filePath);
     orientationNed_ = ned;
+
+    for (int i = 0; i <= SH2_MAX_SENSOR_ID; i++) {
+        if (strcmp("", SensorDsfHeader_[i].sensorColumns) == 0) {
+            extenders_[i] = nullptr;
+        } else {
+            extenders_[i] = new SampleIdExtender();
+        }
+    }
     return (outFile_) ? true : false;
 }
 
@@ -124,15 +138,22 @@ void DsfLogger::logAsyncEvent(sh2_AsyncEvent_t* pEvent, double timestamp) {
             outFile_.unsetf(std::ios_base::floatfield);
             outFile_ << " reset(1)\n";
             break;
-        case SH2_GET_FEATURE_RESP:
+        case SH2_GET_FEATURE_RESP: {
             // Log the sensor reporting interval
-            outFile_ << "$" << static_cast<int32_t>(pEvent->sh2SensorConfigResp.sensorId) << " ";
+            sh2_SensorId_t sensorId = pEvent->sh2SensorConfigResp.sensorId;
+            // Ensure the Channel definition is written before the period is reported.
+            if (extenders_[sensorId]->isEmpty()) {
+                WriteChannelDefinition(sensorId);
+                extenders_[sensorId]->extend(0);
+            }
+            outFile_ << "$" << static_cast<int32_t>(sensorId) << " ";
             outFile_ << std::fixed << std::setprecision(9) << timestamp << ", ";
             outFile_.unsetf(std::ios_base::floatfield);
             outFile_ << "period(";
             outFile_ << (pEvent->sh2SensorConfigResp.sensorConfig.reportInterval_us / 1000000.0);
             outFile_ << ")\n";
             break;
+        }
         default:
             break;
     }
@@ -193,22 +214,25 @@ void DsfLogger::logFrsRecord(char const* name, uint32_t* buffer, uint16_t words)
 // DsfLogger::logSensorValue
 // -------------------------------------------------------------------------------------------------
 void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
+    uint32_t sensorId = pValue->sensorId;
 
-    switch (pValue->sensorId) {
+    if (!extenders_[sensorId]) {
+        // If the sensor ID is invalid, return.
+        return;
+    }
+
+    // Write Sensor Report Header
+    WriteSensorReportHeader(pValue, extenders_[sensorId], timestamp);
+
+    switch (sensorId) {
 
         case SH2_RAW_ACCELEROMETER: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.rawAccelerometer.x << ",";
             outFile_ << pValue->un.rawAccelerometer.y << ",";
             outFile_ << pValue->un.rawAccelerometer.z << "\n";
             break;
         }
         case SH2_ACCELEROMETER: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             if (orientationNed_) {
                 outFile_ << pValue->un.accelerometer.y << "," // ENU -> NED
                     << pValue->un.accelerometer.x << ","
@@ -221,9 +245,6 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_LINEAR_ACCELERATION: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             if (orientationNed_) {
                 outFile_ << pValue->un.linearAcceleration.y << "," // ENU -> NED
                     << pValue->un.linearAcceleration.x << ","
@@ -236,9 +257,6 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_GRAVITY: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             if (orientationNed_) {
                 outFile_ << pValue->un.gravity.y << "," // ENU -> NED
                     << pValue->un.gravity.x << ","
@@ -251,18 +269,12 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_RAW_GYROSCOPE: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.rawGyroscope.x << ","
                 << pValue->un.rawGyroscope.y << ","
                 << pValue->un.rawGyroscope.z << "\n";
             break;
         }
         case SH2_GYROSCOPE_CALIBRATED: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             if (orientationNed_) {
                 outFile_ << pValue->un.gyroscope.y << "," // ENU -> NED
                     << pValue->un.gyroscope.x << ","
@@ -275,9 +287,6 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_GYROSCOPE_UNCALIBRATED: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             if (orientationNed_) {
                 outFile_ << pValue->un.gyroscopeUncal.y << "," // ENU -> NED
                     << pValue->un.gyroscopeUncal.x << ","
@@ -296,18 +305,12 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_RAW_MAGNETOMETER: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.rawMagnetometer.x << ","
                 << pValue->un.rawMagnetometer.y << ","
                 << pValue->un.rawMagnetometer.z << "\n";
             break;
         }
         case SH2_MAGNETIC_FIELD_CALIBRATED: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             if (orientationNed_) {
                 outFile_ << pValue->un.magneticField.y << "," // ENU -> NED
                     << pValue->un.magneticField.x << ","
@@ -320,9 +323,6 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_MAGNETIC_FIELD_UNCALIBRATED: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             if (orientationNed_) {
                 outFile_ << pValue->un.magneticFieldUncal.y << "," // ENU -> NED
                     << pValue->un.magneticFieldUncal.x << ","
@@ -341,9 +341,6 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_ROTATION_VECTOR: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             if (orientationNed_) {
                 outFile_ << pValue->un.rotationVector.real << ","
                     << pValue->un.rotationVector.j << "," // Convert ENU -> NED
@@ -359,9 +356,6 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_GAME_ROTATION_VECTOR: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             if (orientationNed_) {
                 outFile_ << pValue->un.gameRotationVector.real << ","
                     << pValue->un.gameRotationVector.j << "," // Convert ENU -> NED
@@ -376,9 +370,6 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_GEOMAGNETIC_ROTATION_VECTOR: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             if (orientationNed_) {
                 outFile_ << pValue->un.geoMagRotationVector.real << ","
                     << pValue->un.geoMagRotationVector.j << "," // Convert ENU -> NED
@@ -394,108 +385,63 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_PRESSURE: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.pressure.value << "\n";
             break;
         }
         case SH2_AMBIENT_LIGHT: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.ambientLight.value << "\n";
             break;
         }
         case SH2_HUMIDITY: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.humidity.value << "\n";
             break;
         }
         case SH2_PROXIMITY: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.proximity.value << "\n";
             break;
         }
         case SH2_TEMPERATURE: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.temperature.value << "\n";
             break;
         }
         case SH2_TAP_DETECTOR: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << static_cast<uint32_t>(pValue->un.tapDetector.flags) << "\n";
             break;
         }
         case SH2_STEP_DETECTOR: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.stepDetector.latency << "\n";
             break;
         }
         case SH2_STEP_COUNTER: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.stepCounter.steps << ",";
             outFile_ << pValue->un.stepCounter.latency << "\n";
             break;
         }
         case SH2_SIGNIFICANT_MOTION: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.sigMotion.motion << "\n";
             break;
         }
         case SH2_STABILITY_CLASSIFIER: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << static_cast<uint32_t>(pValue->un.stabilityClassifier.classification) << "\n";
             break;
         }
         case SH2_SHAKE_DETECTOR: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.shakeDetector.shake << "\n";
             break;
         }
         case SH2_FLIP_DETECTOR: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.flipDetector.flip << "\n";
             break;
         }
         case SH2_PICKUP_DETECTOR: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.pickupDetector.pickup << "\n";
             break;
         }
         case SH2_STABILITY_DETECTOR: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.stabilityDetector.stability << "\n";
             break;
         }
         case SH2_PERSONAL_ACTIVITY_CLASSIFIER: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << static_cast<uint32_t>(pValue->un.personalActivityClassifier.mostLikelyState) << ",";
             for (int i = 0; i < 10; i++) {
                 outFile_ << static_cast<uint32_t>(pValue->un.personalActivityClassifier.confidence[i]) << ",";
@@ -504,44 +450,26 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_SLEEP_DETECTOR: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << static_cast<uint32_t>(pValue->un.sleepDetector.sleepState) << "\n";
             break;
         }
         case SH2_TILT_DETECTOR: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.tiltDetector.tilt << "\n";
             break;
         }
         case SH2_POCKET_DETECTOR: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.pocketDetector.pocket << "\n";
             break;
         }
         case SH2_CIRCLE_DETECTOR: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.circleDetector.circle << "\n";
             break;
         }
         case SH2_HEART_RATE_MONITOR: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             outFile_ << pValue->un.heartRateMonitor.heartRate << "\n";
             break;
         }
         case SH2_ARVR_STABILIZED_RV: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             if (orientationNed_) {
                 outFile_ << pValue->un.arvrStabilizedRV.real << ","
                     << pValue->un.arvrStabilizedRV.j << "," // Convert ENU -> NED
@@ -557,9 +485,6 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_ARVR_STABILIZED_GRV: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             if (orientationNed_) {
                 outFile_ << pValue->un.arvrStabilizedGRV.real << ","
                     << pValue->un.arvrStabilizedGRV.j << "," // Convert ENU -> NED
@@ -574,9 +499,6 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_GYRO_INTEGRATED_RV: {
-            static SampleIdExtender extender;
-
-            WriteSensorReportHeader(pValue, &extender, timestamp);
             if (orientationNed_) {
                 outFile_ << pValue->un.gyroIntegratedRV.real << ","
                     << pValue->un.gyroIntegratedRV.j << "," // Convert ENU -> NED
@@ -595,6 +517,10 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
                     << pValue->un.gyroIntegratedRV.angVelZ << "\n";
             }
             break;
+        }
+        case SH2_IZRO_MOTION_REQUEST: {
+            outFile_ << static_cast<uint32_t>(pValue->un.izroRequest.intent) << ","
+                << static_cast<uint32_t>(pValue->un.izroRequest.request) << "\n";
         }
         default:
             break;

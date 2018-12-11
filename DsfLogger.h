@@ -28,6 +28,33 @@ extern "C" {
 #include <stddef.h>
 
 // =================================================================================================
+// CLASS DEFINITON - SampleIdExtender
+// =================================================================================================
+class SampleIdExtender {
+public:
+    SampleIdExtender() : empty_(true), seqMsb_(0), seqLsb_(0) {
+    }
+
+    uint64_t extend(uint8_t seq) {
+        empty_ = false;
+        if (seq < seqLsb_) {
+            ++seqMsb_;
+        }
+        seqLsb_ = seq;
+        return (seqMsb_ << 8) | seqLsb_;
+    }
+
+    bool isEmpty() {
+        return empty_;
+    }
+
+private:
+    bool empty_;
+    uint64_t seqMsb_;
+    uint8_t seqLsb_;
+};
+
+// =================================================================================================
 // CLASS DEFINITON
 // =================================================================================================
 class DsfLogger {
@@ -39,11 +66,11 @@ public:
     void finish();
 
     void logMessage(char const* msg);
-    void logAsyncEvent(sh2_AsyncEvent_t* pEvent, double currTime);
+    void logAsyncEvent(sh2_AsyncEvent_t* pEvent, double timestamp);
 
     void logProductIds(sh2_ProductIds_t ids);
     void logFrsRecord(char const* name, uint32_t* buffer, uint16_t words);
-    void logSensorValue(sh2_SensorValue_t* pEvent, double currTime);
+    void logSensorValue(sh2_SensorValue_t* pValue, double timestamp);
 
 private:
     // ---------------------------------------------------------------------------------------------
@@ -56,8 +83,8 @@ private:
     // PRIVATE METHODS
     // ---------------------------------------------------------------------------------------------
     double RadiansToDeg(float value);
-    void WriteHeader(uint8_t sensorId, bool orientation = true);
-    void WriteSensorReportHeader(uint32_t sensorId, double currTime);
+    void WriteChannelDefinition(uint8_t sensorId, bool orientation = true);
+    void WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExtender* extender, double timestamp);
 };
 
 #endif // DSF_LOGGER_H

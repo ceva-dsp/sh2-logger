@@ -36,7 +36,7 @@ struct sensorDsfHeader_s {
 // =================================================================================================
 // LOCAL VARIABLES
 // =================================================================================================
-static const sensorDsfHeader_s SensorDsfHeader_[] = {
+static const sensorDsfHeader_s SensorDsfHeader[] = {
     { "Reserved", "" },                                                                               // 0x00
     { "Accelerometer", "LIN_ACC_GRAVITY[xyz]{m/s^2}" },                                               // 0x01
     { "Gyroscope", "ANG_VEL[xyz]{rad/s}" },                                                           // 0x02
@@ -83,7 +83,7 @@ static const sensorDsfHeader_s SensorDsfHeader_[] = {
     { "MotionRequest", "MOTION_INTENT[x]{state},MOTION_REQUEST[x]{state}" },                          // 0x2B
 };
 
-static_assert((sizeof(SensorDsfHeader_) / sizeof(sensorDsfHeader_s)) == (SH2_MAX_SENSOR_ID + 1),
+static_assert((sizeof(SensorDsfHeader) / sizeof(sensorDsfHeader_s)) == (SH2_MAX_SENSOR_ID + 1),
     "Const variable size match failed");
 
 static SampleIdExtender * extenders_[SH2_MAX_SENSOR_ID + 1];
@@ -100,7 +100,7 @@ bool DsfLogger::init(char const* filePath, bool ned) {
     orientationNed_ = ned;
 
     for (int i = 0; i <= SH2_MAX_SENSOR_ID; i++) {
-        if (strcmp("", SensorDsfHeader_[i].sensorColumns) == 0) {
+        if (strcmp("", SensorDsfHeader[i].sensorColumns) == 0) {
             extenders_[i] = nullptr;
         } else {
             extenders_[i] = new SampleIdExtender();
@@ -545,8 +545,8 @@ double DsfLogger::RadiansToDeg(float value) {
 // DsfLogger::WriteChannelDefinition
 // -------------------------------------------------------------------------------------------------
 void DsfLogger::WriteChannelDefinition(uint8_t sensorId, bool orientation) {
-    char const* fieldNames = SensorDsfHeader_[sensorId].sensorColumns;
-    char const* name = SensorDsfHeader_[sensorId].name;
+    char const* fieldNames = SensorDsfHeader[sensorId].sensorColumns;
+    char const* name = SensorDsfHeader[sensorId].name;
 
     outFile_ << "+" << static_cast<int32_t>(sensorId) 
         << " TIME{s},SAMPLE_ID[x]{samples},STATUS[x]{state}," 

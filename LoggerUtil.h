@@ -182,6 +182,17 @@ namespace LoggerUtil {
         return SH2_MAX_SENSOR_ID + 1;
     }
 
+    static bool isValidSensorId(uint8_t sensorId) {
+        if (sensorId > SH2_MAX_SENSOR_ID) {
+            return false;
+        }
+
+        if (strcmp("Reserved", SensorSpec[sensorId].name) == 0) {
+            return false;
+        }
+
+        return true;
+    }
 };
 
 #endif // LOGGER_UTIL_H

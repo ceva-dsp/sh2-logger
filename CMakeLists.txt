@@ -25,6 +25,7 @@ add_executable(sh2_ftdi_logger
     sh2_ftdi_logger.cpp
     LoggerApp.cpp
     DsfLogger.cpp
+	ConsoleLogger.cpp
     )
 	
 # Link 

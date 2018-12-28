@@ -30,7 +30,7 @@
 // DATA TYPES
 // =================================================================================================
 class TimerSrv;
-class DsfLogger;
+class Logger;
 class FtdiHal;
 
 // =================================================================================================
@@ -64,7 +64,7 @@ public:
     // ---------------------------------------------------------------------------------------------
     // PUBLIC METHODS
     // ---------------------------------------------------------------------------------------------
-    int init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, DsfLogger* logger);
+    int init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, Logger* logger);
 
     int service();
 

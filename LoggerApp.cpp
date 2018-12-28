@@ -23,7 +23,7 @@ extern "C" {
 
 #include "LoggerApp.h"
 #include "LoggerUtil.h"
-#include "DsfLogger.h"
+#include "Logger.h"
 #include "FtdiHal.h"
 #include "TimerService.h"
 
@@ -67,7 +67,7 @@ static uint32_t Sh2HalGetTimeUs(sh2_Hal_t* self);
 // LOCAL VARIABLES
 // =================================================================================================
 static TimerSrv* timer_;
-static DsfLogger* logger_;
+static Logger* logger_;
 static FtdiHal* ftdiHal_;
 
 static State_e state_ = State_e::Idle;
@@ -170,7 +170,7 @@ void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
 // -------------------------------------------------------------------------------------------------
 // LoggerApp::init
 // -------------------------------------------------------------------------------------------------
-int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, DsfLogger* logger) {
+int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, Logger* logger) {
     int status;
 
     timer_ = timer;

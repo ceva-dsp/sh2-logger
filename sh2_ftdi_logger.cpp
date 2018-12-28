@@ -22,6 +22,7 @@
 // =================================================================================================
 #include "TimerService.h"
 #include "DsfLogger.h"
+#include "ConsoleLogger.h"
 #include "LoggerApp.h"
 #include "LoggerUtil.h"
 
@@ -114,6 +115,8 @@ static FtdiHalRpi ftdiHal_;
 
 static LoggerApp loggerApp_;
 static DsfLogger dsfLogger_;
+static ConsoleLogger consoleLogger_;
+static Logger * logger_;
 static bool runApp_ = true;
 
 // Character array for output DSF file path
@@ -218,9 +221,16 @@ int main(int argc, const char* argv[]) {
 
 	// Initialize DSF Logger
     bool rv = dsfLogger_.init(outDsfPath_, appConfig.orientationNed);
-    if (!rv) {
+    if (rv) {
+        logger_ = &dsfLogger_;
+    } else {
         std::cout << "ERROR: Unable to open dsf file:  \"" << outDsfPath_ << "\"" << std::endl;
-        return -1;
+        std::cout << "ERROR: Display sensor data on the console instead." << std::endl;
+
+        // Issue with the specified DSF output file path.
+        // Use the ConsoleLogger to show sensor data on the console instead.
+        consoleLogger_.init(outDsfPath_, appConfig.orientationNed);
+        logger_ = &consoleLogger_;
     }
 
     // Initialize Timer
@@ -236,7 +246,7 @@ int main(int argc, const char* argv[]) {
     }
 
     // Initialize the LoggerApp
-    status = loggerApp_.init(&appConfig, &timer_, &ftdiHal_, &dsfLogger_);
+    status = loggerApp_.init(&appConfig, &timer_, &ftdiHal_, logger_);
     if (status != 0) {
         std::cout << "ERROR: Initialize LoggerApp failed!\n";
         return -1;
@@ -403,12 +413,6 @@ bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
 
     if (!foundSensorList) {
         std::cout << "\nERROR: \"sensorList\" is not specified in the json file. Abort. \n";
-        return false;
-    }
-
-    // If an output dsf file path is not specified, return error then abort.
-    if (strlen(outDsfPath_) == 0) {
-        std::cout << "\nERROR: Output DSF file path is not specified. Abort. \n";
         return false;
     }
 

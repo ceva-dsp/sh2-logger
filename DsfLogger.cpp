@@ -97,16 +97,23 @@ static SampleIdExtender * extenders_[SH2_MAX_SENSOR_ID + 1];
 // -------------------------------------------------------------------------------------------------
 bool DsfLogger::init(char const* filePath, bool ned) {
     outFile_.open(filePath);
-    orientationNed_ = ned;
 
-    for (int i = 0; i <= SH2_MAX_SENSOR_ID; i++) {
-        if (strcmp("", SensorDsfHeader[i].sensorColumns) == 0) {
-            extenders_[i] = nullptr;
-        } else {
-            extenders_[i] = new SampleIdExtender();
+    if (outFile_) {
+        orientationNed_ = ned;
+
+        for (int i = 0; i <= SH2_MAX_SENSOR_ID; i++) {
+            if (strcmp("", SensorDsfHeader[i].sensorColumns) == 0) {
+                extenders_[i] = nullptr;
+            }
+            else {
+                extenders_[i] = new SampleIdExtender();
+            }
         }
+        return true;
+
+    } else {
+        return false;
     }
-    return (outFile_) ? true : false;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -533,14 +540,6 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
 // =================================================================================================
 // PRIVATE FUNCTIONS
 // =================================================================================================
-// -------------------------------------------------------------------------------------------------
-// DsfLogger::RadiansToDeg
-// -------------------------------------------------------------------------------------------------
-double DsfLogger::RadiansToDeg(float value) {
-    double const PI = 3.1415926535897932384626433832795;
-    return (value * 180.0) / PI;
-}
-
 // -------------------------------------------------------------------------------------------------
 // DsfLogger::WriteChannelDefinition
 // -------------------------------------------------------------------------------------------------

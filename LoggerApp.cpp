@@ -293,6 +293,10 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, L
         // std::cout << " @ " << (1e6 / config.reportInterval_us) << "Hz";
         // std::cout << " (" << config.reportInterval_us << "us)\n";
         sh2_setSensorConfig(it->sensorId, &config);
+
+        if (appConfig->useRawSampleTime && IsRawSensor(it->sensorId)) {
+            useSampleTime_ = true;
+        }
     }
 
     // Initialization Process complete
@@ -419,6 +423,19 @@ bool LoggerApp::WaitForResetComplete(int loops) {
 // -------------------------------------------------------------------------------------------------
 void LoggerApp::GetSensorConfiguration(sh2_SensorId_t sensorId, sh2_SensorConfig_t* pConfig) {
     memcpy(pConfig, LoggerUtil::SensorSpec[sensorId].config, sizeof(sh2_SensorConfig_t));
+}
+
+// -------------------------------------------------------------------------------------------------
+// LoggerApp::IsRawSensor
+// -------------------------------------------------------------------------------------------------
+bool LoggerApp::IsRawSensor(sh2_SensorId_t sensorId) {
+    if (sensorId == SH2_RAW_ACCELEROMETER || sensorId == SH2_RAW_GYROSCOPE ||
+        sensorId == SH2_RAW_MAGNETOMETER) {
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 // -------------------------------------------------------------------------------------------------

@@ -58,6 +58,7 @@ public:
         bool dcdAutoSave = false;
         int deviceNumber = 0;
         bool orientationNed = true;
+        bool useRawSampleTime = false;
         sensorList_t * pSensorsToEnable = 0;
     };
 
@@ -82,6 +83,7 @@ private:
     // ---------------------------------------------------------------------------------------------
     bool WaitForResetComplete(int loops);
     void GetSensorConfiguration(sh2_SensorId_t sensorId, sh2_SensorConfig_t* pConfig);
+    bool IsRawSensor(sh2_SensorId_t sensorId);
     void ReportProgress();
 
     int LogFrsRecord(uint16_t recordId, char const* name);

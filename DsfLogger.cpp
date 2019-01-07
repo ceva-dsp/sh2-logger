@@ -54,12 +54,12 @@ static const sensorDsfHeader_s SensorDsfHeader[] = {
     { "Temperature", "TEMPERATURE[x]{degC}" },                                                        // 0x0E
     { "UncalibratedMagField", "MAG_UNCAL[xyz]{m/s^2},MAG_BAIS[xyz]{m/s^2}" },                         // 0x0F
     { "TapDetector", "TAP_DETECTOR[x]{state}" },                                                      // 0x10
-    { "StepCounter", "STEPS[x]{steps}, STEP_COUNTER_LATENCY[x]{us}" },                                // 0x11
+    { "StepCounter", "STEPS[x]{steps},STEP_COUNTER_LATENCY[x]{us}" },                                 // 0x11
     { "SignificantMotion", "SIGNIFICANT_MOTION[x]{state}" },                                          // 0x12
     { "StabilityClassifier", "STABILITY_CLASSIFIER[x]{state}" },                                      // 0x13
-    { "RawAccelerometer", "LIN_ACC_GRAVITY[xyz]{ADC}" },                                              // 0x14
-    { "RawGyroscope", "ANG_VEL[xyz]{ADC},TEMPERATURE[x]{ADC}" },                                      // 0x15
-    { "RawMagnetometer", "MAG[xyz]{ADC}" },                                                           // 0x16
+    { "RawAccelerometer", "LIN_ACC_GRAVITY[xyz]{ADC},SAMPLE_TIME[x]{us}" },                           // 0x14
+    { "RawGyroscope", "ANG_VEL[xyz]{ADC},TEMPERATURE[x]{ADC},SAMPLE_TIME[x]{us}" },                   // 0x15
+    { "RawMagnetometer", "MAG[xyz]{ADC},SAMPLE_TIME[x]{us}" },                                        // 0x16
     { "Reserved", "" },                                                                               // 0x17
     { "StepDetector", "STEP_DETECTOR_LATENCY[x]{us}" },                                               // 0x18
     { "ShakeDetector", "SHAKE_DETECTOR[x]{state}" },                                                  // 0x19
@@ -236,9 +236,10 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
     switch (sensorId) {
 
         case SH2_RAW_ACCELEROMETER: {
-            outFile_ << pValue->un.rawAccelerometer.x << ",";
-            outFile_ << pValue->un.rawAccelerometer.y << ",";
-            outFile_ << pValue->un.rawAccelerometer.z << "\n";
+            outFile_ << pValue->un.rawAccelerometer.x << ","
+                << pValue->un.rawAccelerometer.y << ","
+                << pValue->un.rawAccelerometer.z << ","
+                << pValue->un.rawAccelerometer.timestamp << "\n";
             break;
         }
         case SH2_ACCELEROMETER: {
@@ -280,7 +281,9 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
         case SH2_RAW_GYROSCOPE: {
             outFile_ << pValue->un.rawGyroscope.x << ","
                 << pValue->un.rawGyroscope.y << ","
-                << pValue->un.rawGyroscope.z << "\n";
+                << pValue->un.rawGyroscope.z << ","
+                << pValue->un.rawGyroscope.temperature << ","
+                << pValue->un.rawGyroscope.timestamp << "\n";
             break;
         }
         case SH2_GYROSCOPE_CALIBRATED: {
@@ -316,7 +319,8 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
         case SH2_RAW_MAGNETOMETER: {
             outFile_ << pValue->un.rawMagnetometer.x << ","
                 << pValue->un.rawMagnetometer.y << ","
-                << pValue->un.rawMagnetometer.z << "\n";
+                << pValue->un.rawMagnetometer.z << ","
+                << pValue->un.rawMagnetometer.timestamp << "\n";
             break;
         }
         case SH2_MAGNETIC_FIELD_CALIBRATED: {

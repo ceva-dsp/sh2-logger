@@ -22,6 +22,7 @@ extern "C" {
 #include "sh2.h"
 }
 #include <stdint.h>
+#include <string.h>
 
 // =================================================================================================
 // DEFINES AND MACROS

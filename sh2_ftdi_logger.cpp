@@ -396,7 +396,10 @@ bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
                 LoggerApp::SensorFeatureSet_s config;
                 config.sensorId = (sh2_SensorId_t)LoggerUtil::findSensorIdByName(sl.key().c_str());
                 float rate = sl.value();
-                config.reportInterval_us = static_cast<uint32_t>((1e6 / rate) + 0.5);
+                config.reportInterval_us = 0;
+                if (rate > 0) {
+                    config.reportInterval_us = static_cast<uint32_t>((1e6 / rate) + 0.5);
+                }
 
                 // Add the new sensor to sensorsToEnable_ if the ID is valid.
                 if (config.sensorId <= SH2_MAX_SENSOR_ID && config.reportInterval_us > 0) {

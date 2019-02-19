@@ -555,12 +555,17 @@ void DsfLogger::WriteChannelDefinition(uint8_t sensorId, bool orientation) {
     outFile_ << "+" << static_cast<int32_t>(sensorId) 
         << " TIME{s},SAMPLE_ID[x]{samples},STATUS[x]{state}," 
         << fieldNames << "\n";
+
     if (orientation) {
-        outFile_ << "!" << static_cast<int32_t>(sensorId) << " coordinate_system=";
-        if (orientationNed_) {
-            outFile_ << "\"NED\"\n";
-        } else {
-            outFile_ << "\"ENU\"\n";
+        if (sensorId != SH2_RAW_ACCELEROMETER && sensorId != SH2_RAW_GYROSCOPE &&
+            sensorId != SH2_RAW_MAGNETOMETER) {
+            outFile_ << "!" << static_cast<int32_t>(sensorId) << " coordinate_system=";
+            if (orientationNed_) {
+                outFile_ << "\"NED\"\n";
+            }
+            else {
+                outFile_ << "\"ENU\"\n";
+            }
         }
     }
     outFile_ << "!" << static_cast<int32_t>(sensorId) << " name=\"" << name << "\"\n";

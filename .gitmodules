@@ -1,6 +1,6 @@
 [submodule "sh2-ftdi-hal"]
 	path = sh2-ftdi-hal
-	url = http://github.hcrest.com/hillcrest/sh2-ftdi-hal
+	url = http://github.corp.local/hillcrest/sh2-ftdi-hal
 [submodule "sh2"]
 	path = sh2
-	url = http://github.hcrest.com/hillcrest/sh2
+	url = http://github.corp.local/hillcrest/sh2

@@ -46,9 +46,11 @@ public:
     struct SensorFeatureSet_s {
         sh2_SensorId_t sensorId;
         uint32_t reportInterval_us;
+        uint32_t sensorSpecific;
 
         bool operator<(SensorFeatureSet_s const &other) { return sensorId < other.sensorId; }
         bool operator==(SensorFeatureSet_s const &other) { return sensorId == other.sensorId; }
+        SensorFeatureSet_s():reportInterval_us(0),sensorSpecific(0){}
     };
     typedef std::list<SensorFeatureSet_s> sensorList_t;
 

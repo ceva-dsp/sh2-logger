@@ -96,8 +96,13 @@ static const json loggerJson_ = {
         { "Heart Rate Monitor", 0 },                    // 0x23
         { "ARVR Stabilized Rotation Vector", 0 },       // 0x28
         { "ARVR Stabilized GameRotation Vector", 0 },   // 0x29
-        { "Gyro Rotation Vector", 0 },                  // 0x2A
-    } },
+        { "Gyro Rotation Vector", 0 },                  // 0x2A 
+        { "IZRO Motion Request", 0 },                   // 0x2B
+        { "Raw Optical Flow", {
+            {"rate", 0},
+            {"sensorSpecific",0}}},                     // 0x2C
+        } //sensorList value 
+    }, //sensorList
 };
 
 static const char DefaultJsonName[] = "logger.json";
@@ -395,7 +400,18 @@ bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
             for (json::iterator sl = it.value().begin(); sl != it.value().end(); ++sl) {
                 LoggerApp::SensorFeatureSet_s config;
                 config.sensorId = (sh2_SensorId_t)LoggerUtil::findSensorIdByName(sl.key().c_str());
-                float rate = sl.value();
+                float rate = 0;
+                if(sl.value().is_number()) { 
+                    rate = sl.value(); 
+                } else if (sl.value().is_object()){
+                    for (json::iterator sc = sl.value().begin(); sc != sl.value().end(); ++sc){
+                        if (strcmp(sc.key().c_str(), "rate") == 0){
+                            rate = sc.value();
+                        } else if (strcmp(sc.key().c_str(), "sensorSpecific") == 0){
+                            config.sensorSpecific = sc.value();
+                        }
+                    }
+                }
                 config.reportInterval_us = 0;
                 if (rate > 0) {
                     config.reportInterval_us = static_cast<uint32_t>((1e6 / rate) + 0.5);
@@ -406,7 +422,8 @@ bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
                     std::cout << "INFO: (json)      Sensor ID : " << static_cast<uint32_t>(config.sensorId);
                     std::cout << " - " << sl.key();
                     std::cout << " @ " << (1e6 / config.reportInterval_us) << "Hz";
-                    std::cout << " (" << config.reportInterval_us << "us)\n";
+                    std::cout << " (" << config.reportInterval_us << "us)";
+                    std::cout << " [ss="<< config.sensorSpecific << "]\n";
 
                     sensorsToEnable_.push_back(config);
                 }

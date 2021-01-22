@@ -287,6 +287,7 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, L
     for (sensorList_t::iterator it = pSensorsToEnable_->begin(); it != pSensorsToEnable_->end(); ++it) {
         GetSensorConfiguration(it->sensorId, &config);
         config.reportInterval_us = it->reportInterval_us;
+        config.sensorSpecific = it->sensorSpecific;
 
         // std::cout << "INFO: Sensor ID : " << static_cast<uint32_t>(it->sensorId);
         // std::cout << " - " << SensorSpec_[it->sensorId].name;

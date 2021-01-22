@@ -120,6 +120,7 @@ namespace LoggerUtil {
         { "ARVR Stabilized GameRotation Vector", &DefaultConfigSpec },  // 0x29
         { "Gyro Rotation Vector", &DefaultConfigSpec },                 // 0x2A
         { "IZRO Motion Request", &DefaultConfigSpec },                  // 0x2B
+        { "Raw Optical Flow", &DefaultConfigSpec },                     // 0x2C
     };
     static_assert((sizeof(SensorSpec) / sizeof(sensorSpec_s)) == (SH2_MAX_SENSOR_ID + 1),
         "Const variable size match failed");

@@ -82,6 +82,8 @@ static const sensorDsfHeader_s SensorDsfHeader[] = {
     { "ARVRStabilizedGameRotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion}" },                       // 0x29
     { "GyroIntegratedRV", "ANG_POS_GLOBAL[wxyz]{quaternion},ANG_VEL[xyz]{rad/s}" },                   // 0x2A
     { "MotionRequest", "MOTION_INTENT[x]{state},MOTION_REQUEST[x]{state}" },                          // 0x2B
+    { "RawOpticalFlow",
+    "MOVED{bool},LASER_ON{bool},LIN_VEL_XY[xy]{ADC},SQUAL,RES[xy],SHUTTER,FRAME_MAX,FRAME_AVG,FRAME_MIN,DT{us}" },   // 0x2C
 };
 
 static_assert((sizeof(SensorDsfHeader) / sizeof(sensorDsfHeader_s)) == (SH2_MAX_SENSOR_ID + 1),
@@ -535,6 +537,20 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
         case SH2_IZRO_MOTION_REQUEST: {
             outFile_ << static_cast<uint32_t>(pValue->un.izroRequest.intent) << ","
                 << static_cast<uint32_t>(pValue->un.izroRequest.request) << "\n";
+        }
+        case SH2_RAW_OPTICAL_FLOW:{
+            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.dx != 0 || pValue->un.rawOptFlow.dy != 0) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.laserOn) << ",";
+            outFile_ << static_cast<int16_t>(pValue->un.rawOptFlow.dx) << ",";
+            outFile_ << static_cast<int16_t>(pValue->un.rawOptFlow.dy) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.iq) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.resX) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.resY) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.shutter) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.frameMax) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.frameAvg) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.frameMin) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.dt) << "\n";
         }
         default:
             break;

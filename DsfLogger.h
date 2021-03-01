@@ -57,7 +57,7 @@ private:
 // =================================================================================================
 class DsfLogger : public Logger {
 public:
-    DsfLogger(){};
+    DsfLogger():posixOffset_(0){};
     virtual ~DsfLogger(){};
 
     virtual bool init(char const* filePath, bool ned);
@@ -75,6 +75,7 @@ private:
     // VARIABLES
     // ---------------------------------------------------------------------------------------------
     std::ofstream outFile_;
+    double posixOffset_;
 
     // ---------------------------------------------------------------------------------------------
     // PRIVATE METHODS

@@ -146,6 +146,10 @@ void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
                 currSampleTime_us_ = value.un.rawMagnetometer.timestamp * 1e-6;
                 lastSampleTime_us_ = currSampleTime_us_;
                 break;
+            case SH2_RAW_OPTICAL_FLOW:
+                currSampleTime_us_ = value.un.rawOptFlow.timestamp * 1e-6;
+                lastSampleTime_us_ = currSampleTime_us_;
+                break;
             default:
                 currSampleTime_us_ = lastSampleTime_us_;
                 break;

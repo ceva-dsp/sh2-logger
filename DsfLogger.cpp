@@ -19,6 +19,8 @@
 #include <iomanip>
 #include <string.h>
 
+#include <time.h>
+
 
 // =================================================================================================
 // DEFINES AND MACROS
@@ -83,7 +85,7 @@ static const sensorDsfHeader_s SensorDsfHeader[] = {
     { "GyroIntegratedRV", "ANG_POS_GLOBAL[wxyz]{quaternion},ANG_VEL[xyz]{rad/s}" },                   // 0x2A
     { "MotionRequest", "MOTION_INTENT[x]{state},MOTION_REQUEST[x]{state}" },                          // 0x2B
     { "RawOpticalFlow",
-    "MOVED{bool},LASER_ON{bool},LIN_VEL_XY[xy]{ADC},SQUAL,RES[xy],SHUTTER,FRAME_MAX,FRAME_AVG,FRAME_MIN,DT{us}" },   // 0x2C
+    "MOVED{bool},LASER_ON{bool},LIN_VEL_XY[xy]{ADC},SQUAL,RES[xy],SHUTTER,FRAME_MAX,FRAME_AVG,FRAME_MIN,DT{us},SAMPLE_TIME[x]{us}" },   // 0x2C
 };
 
 static_assert((sizeof(SensorDsfHeader) / sizeof(sensorDsfHeader_s)) == (SH2_MAX_SENSOR_ID + 1),
@@ -550,7 +552,8 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.frameMax) << ",";
             outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.frameAvg) << ",";
             outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.frameMin) << ",";
-            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.dt) << "\n";
+            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.dt) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.timestamp) << "\n";
         }
         default:
             break;
@@ -569,7 +572,7 @@ void DsfLogger::WriteChannelDefinition(uint8_t sensorId, bool orientation) {
     char const* name = SensorDsfHeader[sensorId].name;
 
     outFile_ << "+" << static_cast<int32_t>(sensorId) 
-        << " TIME{s},SAMPLE_ID[x]{samples},STATUS[x]{state}," 
+        << " TIME{s},SYSTEM_TIME{s},SAMPLE_ID[x]{samples},STATUS[x]{state}," 
         << fieldNames << "\n";
 
     if (orientation) {
@@ -595,8 +598,16 @@ void DsfLogger::WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExten
         WriteChannelDefinition(pValue->sensorId);
     }
 
+    if (posixOffset_ == 0 && timestamp != 0){
+        struct timespec tp;
+        clock_gettime(CLOCK_REALTIME, &tp);
+        double posix_time = tp.tv_sec + tp.tv_nsec*1e-9;
+        posixOffset_ = posix_time - timestamp;
+    }
+
     outFile_ << "." << static_cast<uint32_t>(pValue->sensorId) << " ";
     outFile_ << std::fixed << std::setprecision(9) << timestamp << ",";
+    outFile_ << std::fixed << std::setprecision(9) << (timestamp + posixOffset_) << ",";
     outFile_.unsetf(std::ios_base::floatfield);
     outFile_ << extender->extend(pValue->sequence) << ",";
     outFile_ << static_cast<uint32_t>(pValue->status) << ",";

@@ -1,0 +1,9 @@
+# Emacs crud
+*~
+\#*
+
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+sh2_ftdi_logger

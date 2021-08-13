@@ -86,6 +86,7 @@ static const sensorDsfHeader_s SensorDsfHeader[] = {
     { "MotionRequest", "MOTION_INTENT[x]{state},MOTION_REQUEST[x]{state}" },                          // 0x2B
     { "RawOpticalFlow",
     "MOVED{bool},LASER_ON{bool},LIN_VEL_XY[xy]{ADC},SQUAL,RES[xy],SHUTTER,FRAME_MAX,FRAME_AVG,FRAME_MIN,DT{us},SAMPLE_TIME[x]{us}" },   // 0x2C
+    { "DeadReckoningPose", "LIN_POS_GLOBAL[xyz]{m},ANG_POS_GLOBAL[wxyz]{quaternion},LIN_VEL[xyz]{m/s},ANG_VEL[xyz]{rad/s},SAMPLE_TIME[x]{us}" }, // 0x2D
 };
 
 static_assert((sizeof(SensorDsfHeader) / sizeof(sensorDsfHeader_s)) == (SH2_MAX_SENSOR_ID + 1),
@@ -554,6 +555,46 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.frameMin) << ",";
             outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.dt) << ",";
             outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.timestamp) << "\n";
+        }
+        case SH2_DEAD_RECKONING_POSE:{
+            // Output is ENU: rearrange if desired
+            if (orientationNed_){
+                outFile_ << pValue->un.deadReckoningPose.linPosY << ",";
+                outFile_ << pValue->un.deadReckoningPose.linPosX << ",";
+                outFile_ << -pValue->un.deadReckoningPose.linPosZ << ",";
+
+                outFile_ << pValue->un.deadReckoningPose.real << ",";
+                outFile_ << pValue->un.deadReckoningPose.j << ",";
+                outFile_ << pValue->un.deadReckoningPose.i << ",";
+                outFile_ << -pValue->un.deadReckoningPose.k << ",";
+
+                outFile_ << pValue->un.deadReckoningPose.linVelY << ",";
+                outFile_ << pValue->un.deadReckoningPose.linVelX << ",";
+                outFile_ << -pValue->un.deadReckoningPose.linVelZ << ",";
+
+                outFile_ << pValue->un.deadReckoningPose.angVelY << ",";
+                outFile_ << pValue->un.deadReckoningPose.angVelX << ",";
+                outFile_ << -pValue->un.deadReckoningPose.angVelZ << ",";
+            } else {
+                outFile_ << pValue->un.deadReckoningPose.linPosX << ",";
+                outFile_ << pValue->un.deadReckoningPose.linPosY << ",";
+                outFile_ << pValue->un.deadReckoningPose.linPosZ << ",";
+
+                outFile_ << pValue->un.deadReckoningPose.real << ",";
+                outFile_ << pValue->un.deadReckoningPose.i << ",";
+                outFile_ << pValue->un.deadReckoningPose.j << ",";
+                outFile_ << pValue->un.deadReckoningPose.k << ",";
+
+                outFile_ << pValue->un.deadReckoningPose.linVelX << ",";
+                outFile_ << pValue->un.deadReckoningPose.linVelY << ",";
+                outFile_ << pValue->un.deadReckoningPose.linVelZ << ",";
+
+                outFile_ << pValue->un.deadReckoningPose.angVelX << ",";
+                outFile_ << pValue->un.deadReckoningPose.angVelY << ",";
+                outFile_ << pValue->un.deadReckoningPose.angVelZ << ",";
+            }
+            outFile_ << pValue->un.deadReckoningPose.timestamp << "\n";
+            break;
         }
         default:
             break;

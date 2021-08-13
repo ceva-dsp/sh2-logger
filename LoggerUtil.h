@@ -54,25 +54,25 @@ namespace LoggerUtil {
     // CONSTANTS
     // ---------------------------------------------------------------------------------------------
     // Sensors which requires special configuration
-    static const sh2_SensorConfig_t DefaultConfigSpec = { false, false, false, false, 0, 0, 0, 0 };
+    static const sh2_SensorConfig_t DefaultConfigSpec = { false, false, false, false, false, 0, 0, 0, 0 };
 
-    static const sh2_SensorConfig_t PacConfigSpec = { false, false, false, false, 0, 0, 0, 511 };
-    static const sh2_SensorConfig_t StabilityClassifierConfigSpec = { true, true, false, false, 0, 0, 0, 0 };
-    static const sh2_SensorConfig_t StepDetectorConfigSpec = { true, false, false, false, 0, 0, 0, 0 };
-    static const sh2_SensorConfig_t StepCounterConfigSpec = { true, false, false, false, 0, 0, 0, 0 };
-    static const sh2_SensorConfig_t PressureConfigSpec = { false, false, false, false, 0, 0, 0, 0 };
-    static const sh2_SensorConfig_t AmbientLightConfigSpec = { true, true, false, false, (uint16_t)(0.1 * (2 ^ 6)), 0, 0, 0 };
-    static const sh2_SensorConfig_t TemperatureConfigSpec = { true, true, false, false, (uint16_t)(0.1 * (2 ^ 7)), 0, 0, 0 };
-    static const sh2_SensorConfig_t HumidityConfigSpec = { true, true, false, false, (uint16_t)(0.1 * (2 ^ 8)), 0, 0, 0 };
-    static const sh2_SensorConfig_t ProximityConfigSpec = { true, true, true, true, (uint16_t)(1.0 * (2 ^ 4)), 0, 0, 0 };
-    static const sh2_SensorConfig_t TapDetectorConfigSpec = { true, false, false, false, 0, 0, 0, 0 };
-    static const sh2_SensorConfig_t ShakeDetectorConfigSpec = { true, false, true, true, 0, 0, 0, 0 };
-    static const sh2_SensorConfig_t FlipDetectorConfigSpec = { true, false, true, true, 0, 0, 0, 0 };
-    static const sh2_SensorConfig_t StabilityDetectorConfigSpec = { true, false, false, false, 0, 0, 0, 0 };
-    static const sh2_SensorConfig_t SleepDetectorConfigSpec = { true, true, true, true, 0, 0, 0, 0 };
-    static const sh2_SensorConfig_t TiltDetectorConfigSpec = { true, false, true, true, 0, 0, 0, 0 };
-    static const sh2_SensorConfig_t PocketDetectorConfigSpec = { true, false, true, true, 0, 0, 0, 0 };
-    static const sh2_SensorConfig_t CircleDetectorConfigSpec = { true, false, true, true, 0, 0, 0, 0 };
+    static const sh2_SensorConfig_t PacConfigSpec = { false, false, false, false, false, 0, 0, 0, 511 };
+    static const sh2_SensorConfig_t StabilityClassifierConfigSpec = { true, true, false, false, false, 0, 0, 0, 0 };
+    static const sh2_SensorConfig_t StepDetectorConfigSpec = { true, false, false, false, false, 0, 0, 0, 0 };
+    static const sh2_SensorConfig_t StepCounterConfigSpec = { true, false, false, false, false, 0, 0, 0, 0 };
+    static const sh2_SensorConfig_t PressureConfigSpec = { false, false, false, false, false, 0, 0, 0, 0 };
+    static const sh2_SensorConfig_t AmbientLightConfigSpec = { true, true, false, false, false, (uint16_t)(0.1 * (2 ^ 6)), 0, 0, 0 };      // change sensitivity is wrong.
+    static const sh2_SensorConfig_t TemperatureConfigSpec = { true, true, false, false, false, (uint16_t)(0.1 * (2 ^ 7)), 0, 0, 0 };
+    static const sh2_SensorConfig_t HumidityConfigSpec = { true, true, false, false, false, (uint16_t)(0.1 * (2 ^ 8)), 0, 0, 0 };
+    static const sh2_SensorConfig_t ProximityConfigSpec = { true, true, true, true, false, (uint16_t)(1.0 * (2 ^ 4)), 0, 0, 0 };
+    static const sh2_SensorConfig_t TapDetectorConfigSpec = { true, false, false, false, false, 0, 0, 0, 0 };
+    static const sh2_SensorConfig_t ShakeDetectorConfigSpec = { true, false, true, true, false, 0, 0, 0, 0 };
+    static const sh2_SensorConfig_t FlipDetectorConfigSpec = { true, false, true, true, false, 0, 0, 0, 0 };
+    static const sh2_SensorConfig_t StabilityDetectorConfigSpec = { true, false, false, false, false, 0, 0, 0, 0 };
+    static const sh2_SensorConfig_t SleepDetectorConfigSpec = { true, true, true, true, false, 0, 0, 0, 0 };
+    static const sh2_SensorConfig_t TiltDetectorConfigSpec = { true, false, true, true, false, 0, 0, 0, 0 };
+    static const sh2_SensorConfig_t PocketDetectorConfigSpec = { true, false, true, true, false, 0, 0, 0, 0 };
+    static const sh2_SensorConfig_t CircleDetectorConfigSpec = { true, false, true, true, false, 0, 0, 0, 0 };
 
 
     static const sensorSpec_s SensorSpec[] = {
@@ -121,6 +121,7 @@ namespace LoggerUtil {
         { "Gyro Rotation Vector", &DefaultConfigSpec },                 // 0x2A
         { "IZRO Motion Request", &DefaultConfigSpec },                  // 0x2B
         { "Raw Optical Flow", &DefaultConfigSpec },                     // 0x2C
+        { "Dead Reckoning Pose", &DefaultConfigSpec },                  // 0x2D
     };
     static_assert((sizeof(SensorSpec) / sizeof(sensorSpec_s)) == (SH2_MAX_SENSOR_ID + 1),
         "Const variable size match failed");

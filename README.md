@@ -1,6 +1,8 @@
-# SH2 (No-RTOS) DSF Logger over FTDI 
+# SH2 Logger for SH2 devices
 
-DSF Logger configures and communicates with the SensorHub (SH2) in SHTP over UART protocol through the FTDI interface. A group of sensors will be enabled based on the operating mode and rate specified. 
+The SH2 Logger is a command line utility that enables logging sensor data from a sensor hub over USB (FTDI UART interface).
+
+A group of sensors will be enabled based on the operating mode and rate specified. 
 The output SH2 sensor reports will be saved to a log file in DSF format.
 
 ## Requirements
@@ -13,7 +15,7 @@ The output SH2 sensor reports will be saved to a log file in DSF format.
 
 * Clone this repository using the --recursive flag with git:
 ```
-git clone --recursive http://github.hcrest.com/hillcrest/sh2-nortos-ftdi-dsf.git
+git clone --recursive http://github.com/hcrest/sh2-logger
 ```
 
 * Adjust the receive buffer latency timer. Reduce the latency timer from the default value of 16 milliseconds to 1 millisecond. 

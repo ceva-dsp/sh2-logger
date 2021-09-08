@@ -28,6 +28,11 @@ git clone --recursive http://github.com/hcrest/sh2-logger
 # cat /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
 1
 ```
+  * For Linux, you can add a .rules file under `/etc/udev/rules.d` with
+    the following: 
+```
+ACTION=="add", SUBSYSTEM=="usb-serial", DRIVER=="ftdi_sio", ATTR{latency_timer}="1"
+```
 
 ## Building from Source
 
@@ -36,7 +41,7 @@ Run CMAKE to generate the makefile. CMAKE detects the platform which is run on (
 cmake CMakeLists.txt
 ```
 
-For Windows, open the generated solution (sh2_ftdi_logger.sln) in the Visual Studio to build the application.
+For Windows, open the generated solution (`sh2_ftdi_logger.sln`) in the Visual Studio to build the application.
 
 For Linux, run MAKE to compile and build the application.
 ```

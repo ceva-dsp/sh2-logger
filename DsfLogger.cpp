@@ -540,6 +540,7 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
         case SH2_IZRO_MOTION_REQUEST: {
             outFile_ << static_cast<uint32_t>(pValue->un.izroRequest.intent) << ","
                 << static_cast<uint32_t>(pValue->un.izroRequest.request) << "\n";
+            break;
         }
         case SH2_RAW_OPTICAL_FLOW:{
             outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.dx != 0 || pValue->un.rawOptFlow.dy != 0) << ",";
@@ -555,6 +556,7 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.frameMin) << ",";
             outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.dt) << ",";
             outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.timestamp) << "\n";
+            break;
         }
         case SH2_DEAD_RECKONING_POSE:{
             // Output is ENU: rearrange if desired

@@ -101,6 +101,7 @@ static const json loggerJson_ = {
         { "Raw Optical Flow", {
             {"rate", 0},
             {"sensorSpecific",0}}},                     // 0x2C
+        { "Dead Reckoning Pose", 0},                    // 0x2D
         } //sensorList value 
     }, //sensorList
 };

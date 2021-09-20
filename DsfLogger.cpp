@@ -19,7 +19,12 @@
 #include <iomanip>
 #include <string.h>
 
+#ifdef _WIN32
+#include <Windows.h>
+#include <stdint.h>
+#else
 #include <time.h>
+#endif
 
 
 // =================================================================================================
@@ -642,10 +647,30 @@ void DsfLogger::WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExten
     }
 
     if (posixOffset_ == 0 && timestamp != 0){
+#ifdef _WIN32
+        const DWORD64 UNIX_EPOCH = 0x019DB1DED53E8000; // January 1, 1970 in Windows Ticks.
+        const double TICKS_PER_SECOND = 10000000.0;    // Windows tick = 100ns.
+
+        // Get system time
+        FILETIME ft;
+        GetSystemTimeAsFileTime(&ft);
+
+        // Combine parts into LARGE_INTEGER ticks.
+        LARGE_INTEGER ticks;
+        ticks.LowPart = ft.dwLowDateTime;
+        ticks.HighPart = ft.dwHighDateTime;
+
+        // Convert to double, based on Unix epoch, units are seconds.
+        double posix_time = (ticks.QuadPart - UNIX_EPOCH) / TICKS_PER_SECOND;
+
+        // Store offset to convert timestamps to Unix times.
+        posixOffset_ = posix_time - timestamp;
+#else
         struct timespec tp;
         clock_gettime(CLOCK_REALTIME, &tp);
         double posix_time = tp.tv_sec + tp.tv_nsec*1e-9;
         posixOffset_ = posix_time - timestamp;
+#endif
     }
 
     outFile_ << "." << static_cast<uint32_t>(pValue->sensorId) << " ";

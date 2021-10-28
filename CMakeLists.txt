@@ -2,7 +2,7 @@
 # FTDI dsf logger
 #
 cmake_minimum_required(VERSION 2.8)
-project(sh2_ftdi_logger)
+project(sh2_logger)
 
 #list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -21,8 +21,8 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/sh2-ftdi-hal")
 link_directories("${CMAKE_CURRENT_SOURCE_DIR}/sh2-ftdi-hal")
 
 # Build 
-add_executable(sh2_ftdi_logger
-    sh2_ftdi_logger.cpp
+add_executable(sh2_logger
+    sh2_logger.cpp
     LoggerApp.cpp
     DsfLogger.cpp
 	ConsoleLogger.cpp
@@ -31,7 +31,7 @@ add_executable(sh2_ftdi_logger
     )
 	
 # Link 
-target_link_libraries(sh2_ftdi_logger sh2_ftdi_hal)
+target_link_libraries(sh2_logger sh2_ftdi_hal)
 
 # Install docs, license, sample config
 install(FILES

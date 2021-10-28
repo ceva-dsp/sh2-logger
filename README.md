@@ -41,7 +41,7 @@ Run CMAKE to generate the makefile. CMAKE detects the platform which is run on (
 cmake CMakeLists.txt
 ```
 
-For Windows, open the generated solution (`sh2_ftdi_logger.sln`) in the Visual Studio to build the application.
+For Windows, open the generated solution (`sh2_logger.sln`) in the Visual Studio to build the application.
 
 For Linux, run MAKE to compile and build the application.
 ```
@@ -50,7 +50,7 @@ make -f Makefile
 
 ## Running the application
 ```
-Usage: sh2_ftdi_logger.exe <*.json> [--template]
+Usage: sh2_logger.exe <*.json> [--template]
    *.json     - Configuration file in json format
    --template - Generate a configuration template file, 'logger.json'
 ```
@@ -58,7 +58,7 @@ Usage: sh2_ftdi_logger.exe <*.json> [--template]
 ### Generate Template Json File
 Use the '--template' option to generate a batch json file template. The output file name is called "logger.json".
 ```
-sh2_ftdi_logger.exe --template
+sh2_logger.exe --template
 ```
 
 Next, modify the generated json file. To enable sensors, specify the operating rate of each active sensor in the json file. 
@@ -88,9 +88,20 @@ For instance, to enable the GameRV sensors at 100Hz and the Accelerometer at 200
 ### Run The Application
 To Run the DSF logger with the updated batch file
 ```
-sh2_ftdi_logger.exe logger.json
+sh2_logger.exe logger.json
 ```
 
-## License
+## Apache License, Version 2.0
 
-TBD
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License and
+any applicable agreements you may have with CEVA, Inc.
+You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.

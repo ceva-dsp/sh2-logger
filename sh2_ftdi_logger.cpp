@@ -25,6 +25,8 @@
 #include "ConsoleLogger.h"
 #include "LoggerApp.h"
 #include "LoggerUtil.h"
+#include "FspDfu.h"
+#include "BnoDfu.h"
 
 #ifdef _WIN32
 #include "FtdiHalWin.h"
@@ -54,6 +56,8 @@ using json = nlohmann::json;
 // JSON configuration file template
 static const json loggerJson_ = {
     { "calEnable", "0x00" },
+    { "dfuBno", false },
+    { "dfuFsp", false },
     { "clearDcd", false },
     { "dcdAutoSave", false },
     { "deviceNumber", 0 },
@@ -122,6 +126,8 @@ static FtdiHalRpi ftdiHal_;
 
 static LoggerApp loggerApp_;
 static DsfLogger dsfLogger_;
+static BnoDfu bnoDfu_;
+static FspDfu fspDfu_;
 static ConsoleLogger consoleLogger_;
 static Logger * logger_;
 static bool runApp_ = true;
@@ -219,6 +225,33 @@ int main(int argc, const char* argv[]) {
     if (argError) {
         usage(argv[0]);
         return -1;
+    }
+
+    // --------------------------------------------------------------------------------------------
+	// Perform DFU, if requested.
+	// --------------------------------------------------------------------------------------------
+    if ((appConfig.dfuBno) && (appConfig.dfuFsp)) {
+        // Error: Can't DFU for both BNO and FSP.
+        std::cout << "ERROR: Can't do DFU as both BNO and FSP.\n";
+        return -1;
+    }
+    
+    if (appConfig.dfuBno) {
+        // BNO08x DFU
+        if (!bnoDfu_.run()) {
+            // DFU Failed.
+            std::cout << "ERROR: DFU for BNO08x failed.\n";
+            return -1;
+        }
+    }
+    
+    if (appConfig.dfuFsp) {
+        // FSP200 DFU
+        if (!fspDfu_.run()) {
+            // DFU Failed.
+            std::cout << "ERROR: DFU for FSP200 failed.\n";
+            return -1;
+        }
     }
 
     // --------------------------------------------------------------------------------------------
@@ -345,6 +378,24 @@ bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
             pAppConfig->clearDcd = it.value();
             std::cout << "INFO: (json) Clear DCD : ";
             if (pAppConfig->clearDcd) {
+                std::cout << "Enable\n";
+            } else {
+                std::cout << "Disable\n";
+            }
+            
+        } else if (it.key().compare("dfuBno") == 0) {
+            pAppConfig->dfuBno = it.value();
+            std::cout << "INFO: (json) DFU for BNO : ";
+            if (pAppConfig->dfuBno) {
+                std::cout << "Enable\n";
+            } else {
+                std::cout << "Disable\n";
+            }
+            
+        } else if (it.key().compare("dfuFsp") == 0) {
+            pAppConfig->dfuFsp = it.value();
+            std::cout << "INFO: (json) DFU for FSP : ";
+            if (pAppConfig->dfuFsp) {
                 std::cout << "Enable\n";
             } else {
                 std::cout << "Disable\n";

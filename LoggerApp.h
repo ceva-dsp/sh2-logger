@@ -55,6 +55,8 @@ public:
     typedef std::list<SensorFeatureSet_s> sensorList_t;
 
     struct appConfig_s {
+        bool dfuBno = false;
+        bool dfuFsp = false;
         uint8_t calEnableMask = 0x0;
         bool clearDcd = false;
         bool dcdAutoSave = false;

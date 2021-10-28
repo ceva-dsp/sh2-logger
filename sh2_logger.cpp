@@ -60,7 +60,11 @@ static const json loggerJson_ = {
     { "dfuFsp", false },
     { "clearDcd", false },
     { "dcdAutoSave", false },
+#ifdef _WIN32
     { "deviceNumber", 0 },
+#else
+    { "deviceName", "/dev/ttyUSB0" },
+#endif
     { "orientation", "ned" },
     { "rawSampleTime", false},
     { "outDsfFile", "out.dsf" },
@@ -254,10 +258,16 @@ int main(int argc, const char* argv[]) {
         }
     }
 
+    // ### Check for no sensors enabled.
     // --------------------------------------------------------------------------------------------
 	// Start Application
 	// --------------------------------------------------------------------------------------------
 	runApp_ = true;
+
+    // if (appConfig.pSensorsToEnable->empty()) {
+    //    std::cout << "ERROR: No sensor is enabled. Abort.\n";
+    //     return -1;
+    // }
 
 	// Initialize DSF Logger
     bool rv = dsfLogger_.init(outDsfPath_, appConfig.orientationNed);
@@ -278,12 +288,16 @@ int main(int argc, const char* argv[]) {
 
     // Initialze FTDI HAL
     int status;
-    FtdiHal* pFtdiHal = &ftdiHal_;
-    status = pFtdiHal->init(appConfig.deviceNumber, &timer_);
+#ifdef _WIN32
+    status = ftdiHal_.init(appConfig.deviceNumber, &timer_);
+#else
+    status = ftdiHal_.init(appConfig.deviceName, &timer_);
+#endif
     if (status != 0) {
         std::cout << "ERROR: Initialize FTDI HAL failed!\n";
         return -1;
     }
+    FtdiHal* pFtdiHal = &ftdiHal_;
 
     // Initialize the LoggerApp
     status = loggerApp_.init(&appConfig, &timer_, &ftdiHal_, logger_);
@@ -412,8 +426,16 @@ bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
 
         } else if (it.key().compare("deviceNumber") == 0) {
             pAppConfig->deviceNumber = it.value();
-            std::cout << "INFO: (json) Device Number : " << pAppConfig->deviceNumber << "\n";
-
+            std::cout << "INFO: (json) Device Number : " << pAppConfig->deviceName << "\n";
+            
+        } else if (it.key().compare("deviceName") == 0) {
+            std::string val = it.value();
+            strncpy(pAppConfig->deviceName, val.c_str(), sizeof(pAppConfig->deviceName)-1);
+            pAppConfig->deviceName[sizeof(pAppConfig->deviceName)-1] = '\0';
+            
+            std::cout << "INFO: (json) Device Name size : " << sizeof(pAppConfig->deviceName) << "\n";
+            std::cout << "INFO: (json) Device Name : " << pAppConfig->deviceName << "\n";
+            
         } else if (it.key().compare("orientation") == 0) {
             std::string val = it.value();
             std::cout << "INFO: (json) Orientation : "; 
@@ -483,11 +505,6 @@ bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
 
             sensorsToEnable_.sort();
             sensorsToEnable_.unique();
-
-            if (sensorsToEnable_.empty()) {
-                std::cout << "ERROR: No sensor is enabled. Abort.\n";
-                return false;
-            }
 
             pAppConfig->pSensorsToEnable = &sensorsToEnable_;
         }

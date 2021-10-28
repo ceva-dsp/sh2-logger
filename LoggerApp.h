@@ -60,10 +60,11 @@ public:
         uint8_t calEnableMask = 0x0;
         bool clearDcd = false;
         bool dcdAutoSave = false;
-        int deviceNumber = 0;
         bool orientationNed = true;
         bool useRawSampleTime = false;
         sensorList_t * pSensorsToEnable = 0;
+        int deviceNumber = 0;
+        char deviceName[1024] = "";
     };
 
     // ---------------------------------------------------------------------------------------------

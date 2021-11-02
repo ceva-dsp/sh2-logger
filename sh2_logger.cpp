@@ -251,13 +251,19 @@ int main(int argc, const char* argv[]) {
         // Create a HAL for BNO08x DFU
         // TODO: Create Windows variant of this.
         sh2_Hal_t *pHal = bno_dfu_hal_init(appConfig.deviceName);
+        if (pHal == 0) {
+            fprintf(stderr, "Error initializing DFU HAL.\n");
+            return -1;
+        }
         
         // BNO08x DFU
+        printf("Starting DFU for BNO08x.\n");
         if (!bnoDfu_.run(pHal)) {
             // DFU Failed.
             std::cout << "ERROR: DFU for BNO08x failed.\n";
             return -1;
         }
+        printf("DFU completed successfully.\n");
     }
     
     if (appConfig.dfuFsp) {

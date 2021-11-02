@@ -28,6 +28,8 @@ add_executable(sh2_logger
 	ConsoleLogger.cpp
     FspDfu.cpp
     BnoDfu.cpp
+    bno_dfu_linux.c
+    firmware-bno.c
     )
 	
 # Link 

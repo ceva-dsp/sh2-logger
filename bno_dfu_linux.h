@@ -15,35 +15,12 @@
  * limitations under the License.
  */
 
-#ifndef BNODFU_H
-#define BNODFU_H
+#ifndef BNO_DFU_LINUX_H
+#define BNO_DFU_LINUX_H
 
-#include "sh2/sh2_hal.h"
+#include "sh2_hal.h"
 
-#define MAX_PACKET_LEN (64)
+sh2_Hal_t * bno_dfu_hal_init(const char * device_filename);
 
-// DFU Process for BNO08x and related modules
-class BnoDfu {
-  private:
-    // Private Data
-    sh2_Hal_t *pHal;
-    uint8_t dfuBuff[MAX_PACKET_LEN + 2];
-    
-  public:
-    // Constructor
-    BnoDfu();
+#endif // BNO_DFU_LINUX_H
 
-  private:
-    // Private methods
-    int dfuSend(uint8_t* pData, uint32_t len);
-    int sendAppSize(uint32_t appSize);
-    int sendPktSize(uint8_t packetLen);
-    int sendPkt(uint8_t* pData, uint32_t len);
-    
-  public:
-    // Public API
-    // Run DFU Process
-    bool run(sh2_Hal_t *pHal);
-};
-
-#endif // ifndef BNODFU_H

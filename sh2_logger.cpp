@@ -30,9 +30,16 @@
 
 #ifdef _WIN32
 #include "FtdiHalWin.h"
+// TODO: Add Windows DFU support
+// extern "C" {
+//    #include "bno_dfu_win32.h"
+//}
 #else
 #include "FtdiHalRpi.h"
 #include "signal.h"
+extern "C" {
+    #include "bno_dfu_linux.h"
+}
 #endif
 
 #include <string.h>
@@ -241,8 +248,12 @@ int main(int argc, const char* argv[]) {
     }
     
     if (appConfig.dfuBno) {
+        // Create a HAL for BNO08x DFU
+        // TODO: Create Windows variant of this.
+        sh2_Hal_t *pHal = bno_dfu_hal_init(appConfig.deviceName);
+        
         // BNO08x DFU
-        if (!bnoDfu_.run()) {
+        if (!bnoDfu_.run(pHal)) {
             // DFU Failed.
             std::cout << "ERROR: DFU for BNO08x failed.\n";
             return -1;

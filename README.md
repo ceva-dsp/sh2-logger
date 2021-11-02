@@ -91,6 +91,69 @@ To Run the DSF logger with the updated batch file
 sh2_logger.exe logger.json
 ```
 
+## Download Firmware Update
+
+After connecting to the system, but prior to enabling sensors, the sh2
+logger can perform a firmware update on the connected device.  The
+RESETN and BOOTN signals of the connected sensor hub will need to be
+connected to DTR and RTS, respectively.  Also the firmware image to be
+downloaded is "baked in" to the application at this point.  It will
+need to be compiled with an appropriate firmware-bno.c file.  To
+obtain the necessary firmware file, contact CEVA, Inc., Sensor Fusion
+Business Unit, about licensing terms.
+
+### Connection
+
+The DTR signal from the FTDI interface must be connected to RESETN on the BNO08x.
+
+The RTS signal from the FTDI interface must be connected to BOOTN on the BNO08x.
+
+Alternatively, GPIO pins could be used to control these interface lines and the functions setResetN() and setBootN() in bno_dfu_linux.c should be changed, accordingly.
+
+### Configuration in logger.json
+
+To enable the DFU operation, set dfuBno to true and set deviceName to the name of the tty device attached to the BNO08x.
+
+For example:
+```json
+{
+    "calEnable": "0x00",
+    "clearDcd": false,
+    "dcdAutoSave": false,
+    "deviceName": "/dev/ttyS6",
+    "dfuBno": true,
+    "dfuFsp": false,
+    "orientation": "ned",
+    ...
+```
+
+### Running the DFU process.
+
+With the device connected and the logger configured as above, the DFU process will run when the logger starts up:
+
+```
+./sh2_logger logger.json
+
+INFO: (json) Process the batch json file 'logger.json' ...
+INFO: (json) Calibration Enable : 0
+INFO: (json) Clear DCD : Disable
+INFO: (json) DCD Auto Save : Disable
+INFO: (json) Device Name size : 1024
+INFO: (json) Device Name : /dev/ttyS6
+INFO: (json) DFU for BNO : Enable
+INFO: (json) DFU for FSP : Disable
+INFO: (json) Orientation : NED
+INFO: (json) DSF Output file : out.dsf
+INFO: (json) Use Raw Sensor Sample Time : Disable
+INFO: (json) Extract Sensor list ...
+INFO: (json)      Sensor ID : 1 - Accelerometer @ 100Hz (10000us) [ss=0]
+
+Starting DFU for BNO08x.
+DFU Completed successfully.
+...
+
+```
+
 ## Apache License, Version 2.0
 
 Licensed under the Apache License, Version 2.0 (the "License");

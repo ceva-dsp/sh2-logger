@@ -122,6 +122,7 @@ namespace LoggerUtil {
         { "IZRO Motion Request", &DefaultConfigSpec },                  // 0x2B
         { "Raw Optical Flow", &DefaultConfigSpec },                     // 0x2C
         { "Dead Reckoning Pose", &DefaultConfigSpec },                  // 0x2D
+        { "Wheel Encoder", &DefaultConfigSpec },                        // 0x2E
     };
     static_assert((sizeof(SensorSpec) / sizeof(sensorSpec_s)) == (SH2_MAX_SENSOR_ID + 1),
         "Const variable size match failed");

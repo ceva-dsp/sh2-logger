@@ -35,6 +35,9 @@
 // Wait this long before assuming bootloader is ready
 #define DFU_BOOT_DELAY_US (50000)
 
+// Wait this long before assuming SH2 is ready
+#define SH2_BOOT_DELAY_US (150000)
+
 // Augmented HAL structure with BNO DFU on Linux specific fields.
 struct bno_dfu_hal_s {
     sh2_Hal_t hal_fns;            // must be first so (sh2_Hal_t *) can be cast as (bno_dfu_hal_t *)
@@ -195,6 +198,9 @@ static void dfu_hal_close(sh2_Hal_t *self) {
     delay_us(RESET_DELAY_US);
     
     setResetN(pHal->fd, true);    // De-assert reset with BOOTN de-asserted
+
+    // Delay to ensure fully booted before allowing system to continue.
+    delay_us(SH2_BOOT_DELAY_US);
     
     // Mark as not open
     pHal->is_open = false;

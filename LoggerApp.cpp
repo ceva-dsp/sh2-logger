@@ -80,6 +80,8 @@ static double lastSampleTime_us_ = 0;
 
 static uint64_t sensorEventsReceived_ = 0;
 
+static uint64_t shtpErrors_ = 0;
+
 // =================================================================================================
 // CONST LOCAL VARIABLES
 // =================================================================================================
@@ -113,10 +115,16 @@ void myEventCallback(void* cookie, sh2_AsyncEvent_t* pEvent) {
 
     // Report SHTP errors
     if (pEvent->eventId == SH2_SHTP_EVENT) {
-        std::cout << "\nWARNING: SHTP error detected." << std::endl;
+        shtpErrors_ += 1;
+        
+        // With latest SH2 implementation, one SHTP error,
+        // for discarded advertisements, is normal.
+        if (shtpErrors_ > 1) {
+            std::cout << "\nWARNING: SHTP error detected." << std::endl;
+        }
     }
 
-    // Log ansync events
+    // Log async events
     logger_->logAsyncEvent(pEvent, currSampleTime_us_);
 }
 
@@ -185,6 +193,7 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, L
     // Open SH2/SHTP connection
     // ---------------------------------------------------------------------------------------------
     state_ = State_e::Reset; // Enter 'Reset' state
+    shtpErrors_ = 0;;
 
     std::cout << "INFO: Open a session with a SensorHub \n";
     status = sh2_open(&sh2Hal_, myEventCallback, NULL);

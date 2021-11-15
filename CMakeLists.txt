@@ -17,6 +17,7 @@ add_subdirectory(sh2-ftdi-hal)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/sh2")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/sh2-ftdi-hal")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/tclap/include")
 
 link_directories("${CMAKE_CURRENT_SOURCE_DIR}/sh2-ftdi-hal")
 

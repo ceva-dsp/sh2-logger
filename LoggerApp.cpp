@@ -230,15 +230,29 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, L
     // ---------------------------------------------------------------------------------------------
     // Clear DCD and Reset
     // ---------------------------------------------------------------------------------------------
-    if (appConfig->clearDcd) {
-        std::cout << "INFO: Clear DCD and Reset\n";
-        uint32_t dummy = 0;
-        // Clear DCD FRS record
-        sh2_setFrs(DYNAMIC_CALIBRATION, &dummy, 0);
+    if (appConfig->clearDcd || appConfig->clearOfCal) {
+        
+        if (appConfig->clearOfCal) {
+            std::cout << "INFO: Clear optical flow cal\n";
+            uint32_t dummy = 0;
+            sh2_setFrs(DR_CAL, &dummy, 0);
+        }
 
-        // Clear DCD and Reset the target system
-        state_ = State_e::Reset;
-        sh2_clearDcdAndReset();
+        if (appConfig->clearDcd) {
+            std::cout << "INFO: Clear DCD and Reset\n";
+            // Clear DCD FRS record
+            uint32_t dummy = 0;
+            sh2_setFrs(DYNAMIC_CALIBRATION, &dummy, 0);
+
+            // Clear DCD and Reset the target system
+            state_ = State_e::Reset;
+            sh2_clearDcdAndReset();
+        }
+        else {
+            // Reset the target system without clearing DCD
+            sh2_reinitialize();
+        }
+        
         // Wait for the system reset to complete
         if (!WaitForResetComplete(RESET_TIMEOUT_)) {
             std::cout << "ERROR: Failed to reset a SensorHub - Timeout \n";
@@ -345,9 +359,16 @@ int LoggerApp::finish() {
     sh2_SensorConfig_t config;
     memset(&config, 0, sizeof(config));
     config.reportInterval_us = 0;
-    for (sensorList_t::iterator it = pSensorsToEnable_->begin(); it != pSensorsToEnable_->end(); ++it) {
+    for (sensorList_t::iterator it = pSensorsToEnable_->begin();
+         it != pSensorsToEnable_->end();
+         ++it) {
         sh2_setSensorConfig(it->sensorId, &config);
     }
+
+    // Save DCD
+    std::cout << "INFO: Saving DCD." << std::endl;
+    sh2_saveDcdNow();
+    std::cout << "  Done." << std::endl;
 
     /*
     Sleep(100);
@@ -413,7 +434,7 @@ static uint32_t Sh2HalGetTimeUs(sh2_Hal_t* self) {
 // LoggerApp::WaitForResetComplete
 // -------------------------------------------------------------------------------------------------
 bool LoggerApp::WaitForResetComplete(int loops) {
-    std::cout << "INFO: Waiting for System Reset ";
+    std::cout << "INFO: Waiting for System Reset " << std::endl;
 
     for (int resetCounter = 0; state_ == State_e::Reset; ++resetCounter) {
         // Print periodic progress indicator 

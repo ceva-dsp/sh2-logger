@@ -23,7 +23,7 @@ FspDfu::FspDfu() {
 }
 
 // Run DFU Process
-bool FspDfu::run() {
+bool FspDfu::run(sh2_Hal_t *pHal_) {
     // TODO: Implement DFU process and return true on success.
     return false;
 }

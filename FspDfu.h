@@ -18,6 +18,10 @@
 #ifndef FSPDFU_H
 #define FSPDFU_H
 
+#include "sh2/sh2_hal.h"
+
+#define MAX_PACKET_LEN (64)
+
 // DFU Process for FSP200 and similar modules
 class FspDfu {
 private:
@@ -29,7 +33,7 @@ public:
 
 public:
     // Run DFU Process
-    bool run();
+    bool run(sh2_Hal_t *pHal_);
 };
 
 #endif // ifndef FSPDFU_H

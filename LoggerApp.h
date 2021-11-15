@@ -59,6 +59,7 @@ public:
         bool dfuFsp = false;
         uint8_t calEnableMask = 0x0;
         bool clearDcd = false;
+        bool clearOfCal = false;
         bool dcdAutoSave = false;
         bool orientationNed = true;
         bool useRawSampleTime = false;

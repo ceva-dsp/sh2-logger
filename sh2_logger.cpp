@@ -30,17 +30,14 @@
 
 #ifdef _WIN32
 #include "FtdiHalWin.h"
-// TODO: Add Windows DFU support
-// extern "C" {
-//    #include "bno_dfu_win32.h"
-//}
 #else
 #include "FtdiHalRpi.h"
 #include "signal.h"
-extern "C" {
-    #include "bno_dfu_linux.h"
-}
 #endif
+
+extern "C" {
+    #include "bno_dfu_hal.h"
+}
 
 #include <string.h>
 #include <iomanip>
@@ -142,12 +139,12 @@ void Sh2Logger::parseArgs(int argc, const char *argv[]) {
 #ifdef _WIN32    
     // --device device_number
     TCLAP::ValueArg<unsigned> deviceArg("d", "device", "serial port number",
-                                           true, 1, "device-num");
+                                           false, 1, "device-num");
     cmd.add(deviceArg);
 #else
     // --device device_name
     TCLAP::ValueArg<std::string> deviceArg("d", "device", "serial port device name",
-                                           true, "", "device-name");
+                                           false, "", "device-name");
     cmd.add(deviceArg);
 #endif
 
@@ -333,7 +330,11 @@ int Sh2Logger::do_logging() {
 
     // Initialze FTDI HAL
     int status;
+#ifdef _WIN32
+    status = ftdiHal_.init(m_deviceArg, &timer_);
+#else
     status = ftdiHal_.init(m_deviceArg.c_str(), &timer_);
+#endif
     if (status != 0) {
         std::cout << "ERROR: Initialize FTDI HAL failed!\n";
         return -1;

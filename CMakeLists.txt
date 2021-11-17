@@ -21,6 +21,12 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/tclap/include")
 
 link_directories("${CMAKE_CURRENT_SOURCE_DIR}/sh2-ftdi-hal")
 
+if(WIN32)
+set(PLATFORM_CODE Win)
+else()
+set(PLATFORM_CODE Linux)
+endif()
+
 # Build 
 add_executable(sh2_logger
     sh2_logger.cpp
@@ -29,7 +35,7 @@ add_executable(sh2_logger
 	ConsoleLogger.cpp
     FspDfu.cpp
     BnoDfu.cpp
-    bno_dfu_linux.c
+    bno_dfu_hal_${PLATFORM_CODE}.c
     firmware-bno.c
     )
 	

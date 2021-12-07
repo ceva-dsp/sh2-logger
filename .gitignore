@@ -7,3 +7,15 @@ CMakeFiles/
 Makefile
 cmake_install.cmake
 sh2_ftdi_logger
+
+.vs
+ALL_BUILD**
+Debug/*
+INSTALL*
+ZERO_CHECK*
+sh2_logger.dir
+sh2_logger.sln
+sh2_logger.vcxproj*
+x64/*
+firmware-fsp200*
+

@@ -20,7 +20,14 @@
 // =================================================================================================
 // INCLUDE FILES
 // =================================================================================================
-#include "TimerService.h"
+#include <string.h>
+#include <iomanip>
+#include <iostream>
+#include <string>
+#include <nlohmann/json.hpp>
+#include "tclap/CmdLine.h"
+
+/// #include "TimerService.h"
 #include "DsfLogger.h"
 #include "ConsoleLogger.h"
 #include "LoggerApp.h"
@@ -29,22 +36,19 @@
 #include "BnoDfu.h"
 
 #ifdef _WIN32
-#include "FtdiHalWin.h"
-#else
-#include "FtdiHalRpi.h"
+#include <Windows.h>
+#endif
+
+#ifndef _WIN32
 #include "signal.h"
 #endif
 
-extern "C" {
-    #include "bno_dfu_hal.h"
-}
 
-#include <string.h>
-#include <iomanip>
-#include <iostream>
-#include <string>
-#include <nlohmann/json.hpp>
-#include "tclap/CmdLine.h"
+
+extern "C" {
+#include "bno_dfu_hal.h"
+#include "ftdi_hal.h"
+}
 
 // =================================================================================================
 // DEFINES AND MACROS
@@ -69,12 +73,14 @@ static const uint32_t MaxPathLen = 260;
 // =================================================================================================
 // LOCAL VARIABLES
 // =================================================================================================
-#ifdef _WIN32
+#if 0 // TODO remove
+// #ifdef _WIN32
 static TimerSrvWin timer_;
 static FtdiHalWin ftdiHal_;
-#else
+// #else
 static TimerSrvRpi timer_;
 static FtdiHalRpi ftdiHal_;
+// #endif
 #endif
 
 // TODO: Move all these globals to a more suitable scope.
@@ -94,7 +100,7 @@ class Sh2Logger {
     int do_template();
     int do_logging();
     int do_dfu_bno();
-    // int do_dfu_fsp();  // TODO-DW : add this back
+    int do_dfu_fsp();
     
   private:
     std::string m_cmd;
@@ -183,12 +189,7 @@ int Sh2Logger::run() {
     }
 
     else if (m_cmd == "dfu-fsp200") {
-#if 0    // TODO-DW : Add this back
         return do_dfu_fsp();
-#else
-        std::cout << "ERROR: FSP200 DFU not implemented yet." << std::endl;
-        return -1;
-#endif
     }
 
     else if (m_cmd == "log") {
@@ -325,24 +326,29 @@ int Sh2Logger::do_logging() {
         logger_ = &consoleLogger_;
     }
 
+#if 0
     // Initialize Timer
     timer_.init();
+#endif
 
     // Initialze FTDI HAL
     int status;
 #ifdef _WIN32
-    status = ftdiHal_.init(m_deviceArg, &timer_);
+    /// status = ftdiHal_.init(m_deviceArg, &timer_);
+    sh2_Hal_t *pHal = ftdi_hal_init(m_deviceArg);
 #else
-    status = ftdiHal_.init(m_deviceArg.c_str(), &timer_);
+    /// status = ftdiHal_.init(m_deviceArg.c_str(), &timer_);
+    sh2_Hal_t *pHal = ftdi_hal_init(m_deviceArg.c_str());
 #endif
-    if (status != 0) {
+
+    if (pHal == 0) {
         std::cout << "ERROR: Initialize FTDI HAL failed!\n";
         return -1;
     }
-    FtdiHal* pFtdiHal = &ftdiHal_;
+    /// FtdiHal* pFtdiHal = &ftdiHal_;
 
     // Initialize the LoggerApp
-    status = loggerApp_.init(&appConfig, &timer_, &ftdiHal_, logger_);
+    status = loggerApp_.init(&appConfig, pHal, logger_);
     if (status != 0) {
         std::cout << "ERROR: Initialize LoggerApp failed!\n";
         return -1;
@@ -363,13 +369,13 @@ int Sh2Logger::do_logging() {
 
 	std::cout << "\nProcessing Sensor Reports . . ." << std::endl;
 
-	uint64_t currSysTime_us = timer_.getTimestamp_us();
-	uint64_t lastChecked_us = currSysTime_us;
+	uint32_t currSysTime_us = pHal->getTimeUs(pHal);
+	uint32_t lastChecked_us = currSysTime_us;
 
     while (runApp_) {
 
 #ifdef _WIN32
-        currSysTime_us = timer_.getTimestamp_us();
+        currSysTime_us = pHal->getTimeUs(pHal);
 		
 		if (currSysTime_us - lastChecked_us > 200000) {
             lastChecked_us = currSysTime_us;
@@ -439,10 +445,6 @@ int Sh2Logger::do_dfu_bno() {
     return 0;
 }
 
-#if 0
-    // TODO: Move ftdiHal_, ftdiHal_.init() into HAL file, as ftdi_hal_init()
-    // TODO: Use ftdi_hal_init() in do_logger, too.
-
 int Sh2Logger::do_dfu_fsp() {
     // Make sure a filename was specified
     if (!m_inFilenameSet) {
@@ -458,9 +460,9 @@ int Sh2Logger::do_dfu_fsp() {
     }
     
 #ifdef _WIN32
-    sh2_Hal_t *pHal = ftdi_hal_init(m_deviceArg);
+    sh2_Hal_t *pHal = ftdi_hal_dfu_init(m_deviceArg);
 #else
-    sh2_Hal_t *pHal = ftdi_hal_init(m_deviceArg.c_str());
+    sh2_Hal_t *pHal = ftdi_hal_dfu_init(m_deviceArg.c_str());
 #endif
     
     if (pHal == 0) {
@@ -480,7 +482,6 @@ int Sh2Logger::do_dfu_fsp() {
     printf("DFU completed successfully.\n");
     return 0;
 }
-#endif
 
 // -----------------------------------------------------------------------  
 
@@ -507,7 +508,7 @@ void breakHandler(int signo) {
 // ================================================================================================
 // MAIN
 // ================================================================================================
-int main(int argc, const char* argv[]) {
+ int main(int argc, const char* argv[]) {
 
 #ifndef _WIN32
     struct sigaction act;

@@ -20,6 +20,9 @@
 
 #include <list>
 #include <stdint.h>
+extern "C" {
+    #include "sh2_hal.h"
+}
 
 // =================================================================================================
 // DEFINES AND MACROS
@@ -29,9 +32,7 @@
 // =================================================================================================
 // DATA TYPES
 // =================================================================================================
-class TimerSrv;
 class Logger;
-class FtdiHal;
 
 // =================================================================================================
 // CLASS DEFINITON - LoggerApp
@@ -71,7 +72,7 @@ public:
     // ---------------------------------------------------------------------------------------------
     // PUBLIC METHODS
     // ---------------------------------------------------------------------------------------------
-    int init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, Logger* logger);
+    int init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger);
 
     int service();
 
@@ -87,7 +88,9 @@ private:
     // ---------------------------------------------------------------------------------------------
     // PRIVATE METHODS
     // ---------------------------------------------------------------------------------------------
+    #if 0
     bool WaitForResetComplete(int loops);
+    #endif
     void GetSensorConfiguration(sh2_SensorId_t sensorId, sh2_SensorConfig_t* pConfig);
     bool IsRawSensor(sh2_SensorId_t sensorId);
     void ReportProgress();

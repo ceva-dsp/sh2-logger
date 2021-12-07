@@ -32,11 +32,6 @@
 // Wait this long before assuming SH2 is ready
 #define SH2_BOOT_DELAY_US (150000)
 
-#define CBUS_DTR (0x01)
-#define CBUS_RTS (0x02)
-#define CBUS_OUTPUTS ((CBUS_DTR | CBUS_RTS) << 4)
-#define CBUS_ASYNC_BIT_BANG (0x01)  // Asynchronous bit bang mode
-
 // Augmented HAL structure with BNO DFU on Windows specific fields.
 struct bno_dfu_hal_s {
     sh2_Hal_t hal_fns;            // must be first so (sh2_Hal_t *) can be cast as (bno_dfu_hal_t *)

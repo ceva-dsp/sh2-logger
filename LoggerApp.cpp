@@ -24,8 +24,8 @@ extern "C" {
 #include "LoggerApp.h"
 #include "LoggerUtil.h"
 #include "Logger.h"
-#include "FtdiHal.h"
-#include "TimerService.h"
+/// #include "FtdiHal.h"
+/// #include "TimerService.h"
 
 #include "math.h"
 #include <string.h>
@@ -54,6 +54,7 @@ enum class State_e {
 // DATA TYPES
 // =================================================================================================
 
+#if 0
 // =================================================================================================
 // LOCAL FUNCTION PROTOTYPES
 // =================================================================================================
@@ -62,13 +63,14 @@ static void Sh2HalClose(sh2_Hal_t* self);
 static int Sh2HalRead(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len, uint32_t* t_us);
 static int Sh2HalWrite(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len);
 static uint32_t Sh2HalGetTimeUs(sh2_Hal_t* self);
+#endif
 
 // =================================================================================================
 // LOCAL VARIABLES
 // =================================================================================================
-static TimerSrv* timer_;
+// static TimerSrv* timer_;
 static Logger* logger_;
-static FtdiHal* ftdiHal_;
+// static FtdiHal* ftdiHal_;
 
 static State_e state_ = State_e::Idle;
 
@@ -82,6 +84,7 @@ static uint64_t sensorEventsReceived_ = 0;
 
 static uint64_t shtpErrors_ = 0;
 
+#if 0
 // =================================================================================================
 // CONST LOCAL VARIABLES
 // =================================================================================================
@@ -92,6 +95,8 @@ static sh2_Hal_t sh2Hal_ = {
 	Sh2HalWrite,
 	Sh2HalGetTimeUs,
 };
+#endif
+static sh2_Hal_t* sh2Hal_ = 0;
 
 
 // =================================================================================================
@@ -182,26 +187,28 @@ void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
 // -------------------------------------------------------------------------------------------------
 // LoggerApp::init
 // -------------------------------------------------------------------------------------------------
-int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, Logger* logger) {
+int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
     int status;
 
-    timer_ = timer;
-    ftdiHal_ = ftdiHal;
+    // timer_ = timer;
+    // ftdiHal_ = ftdiHal;
     logger_ = logger;
+    sh2Hal_ = pHal;
 
     // ---------------------------------------------------------------------------------------------
     // Open SH2/SHTP connection
     // ---------------------------------------------------------------------------------------------
     state_ = State_e::Reset; // Enter 'Reset' state
-    shtpErrors_ = 0;;
+    shtpErrors_ = 0;
 
     std::cout << "INFO: Open a session with a SensorHub \n";
-    status = sh2_open(&sh2Hal_, myEventCallback, NULL);
+    status = sh2_open(sh2Hal_, myEventCallback, NULL);
     if (status != SH2_OK) {
         std::cout << "ERROR: Failed to open a SensorHub session : " << status << "\n";
         return -1;
     }
 
+    #if 0
     // Stay in loop while waiting for system reset to complete
     int retryCnt = 3; // Number of retry allowed is 3
     while (true) {
@@ -217,6 +224,7 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, L
             break;
         }
     }
+    #endif
 
     // ---------------------------------------------------------------------------------------------
     // Set callback for Sensor Data
@@ -253,11 +261,13 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, L
             sh2_reinitialize();
         }
         
+        #if 0
         // Wait for the system reset to complete
         if (!WaitForResetComplete(RESET_TIMEOUT_)) {
             std::cout << "ERROR: Failed to reset a SensorHub - Timeout \n";
             return -1;
         }
+        #endif
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -387,7 +397,7 @@ int LoggerApp::finish() {
     return 1;
 }
 
-
+#if 0
 // =================================================================================================
 // LOCAL FUNCTIONS
 // =================================================================================================
@@ -425,8 +435,9 @@ static int Sh2HalWrite(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len) {
 static uint32_t Sh2HalGetTimeUs(sh2_Hal_t* self) {
     return (uint32_t)timer_->getTimestamp_us();
 }
+#endif
 
-
+#if 0
 // =================================================================================================
 // PRIVATE METHODS
 // =================================================================================================
@@ -452,6 +463,7 @@ bool LoggerApp::WaitForResetComplete(int loops) {
     // state_ has been updated before resetCounter reaches 'loops' limit
     return true;
 }
+#endif
 
 // -------------------------------------------------------------------------------------------------
 // LoggerApp::GetSensorConfiguration
@@ -479,11 +491,7 @@ bool LoggerApp::IsRawSensor(sh2_SensorId_t sensorId) {
 void LoggerApp::ReportProgress() {
     uint64_t currSysTime_us;
 
-    if (lastReportTime_us_ == 0) {
-        lastReportTime_us_ = timer_->getTimestamp_us();
-    }
-
-    currSysTime_us = timer_->getTimestamp_us();
+    currSysTime_us = sh2Hal_->getTimeUs(sh2Hal_);
 
     if (currSysTime_us - lastReportTime_us_ >= 1000000) {
         lastReportTime_us_ = currSysTime_us;

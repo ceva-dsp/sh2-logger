@@ -19,3 +19,6 @@ sh2_logger.vcxproj*
 x64/*
 firmware-fsp200*
 
+*.hcbin
+
+

@@ -387,7 +387,7 @@ static void hdlr(void *cookie, uint8_t *payload, uint16_t len, uint32_t timestam
 }
     
 // Run DFU Process
-bool FspDfu::run(sh2_Hal_t *pHal_) {
+bool FspDfu::run(sh2_Hal_t *pHal_, Firmware *firmware) {
     uint32_t start_us = 0;
     uint32_t now_us = 0;
 
@@ -399,8 +399,8 @@ bool FspDfu::run(sh2_Hal_t *pHal_) {
     initState();
     
     // Open firmware and validate it
-    m_firmware = &firmware_fsp200;
-    openFirmware();
+    m_firmware = firmware;
+    m_status = m_firmware->open();
     if (m_status != SH2_OK) goto fin;
     
     // Initialize SHTP layer

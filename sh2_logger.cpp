@@ -43,7 +43,7 @@
 #include "signal.h"
 #endif
 
-
+#include "HcBinFile.h"
 
 extern "C" {
 #include "bno_dfu_hal.h"
@@ -129,7 +129,7 @@ void Sh2Logger::parseArgs(int argc, const char *argv[]) {
     // Command: log (default), dfu,
     std::vector<std::string> operations = {"log", "dfu-bno", "dfu-fsp200", "template"};
     TCLAP::ValuesConstraint<std::string> opConstr(operations);
-    TCLAP::UnlabeledValueArg<std::string> cmdArg("command", "operation to perform", false, "log", &opConstr);
+    TCLAP::UnlabeledValueArg<std::string> cmdArg("command", "operation to perform", true, "log", &opConstr);
     cmd.add(cmdArg);
 
     // --input
@@ -431,17 +431,22 @@ int Sh2Logger::do_dfu_bno() {
         fprintf(stderr, "Error initializing DFU HAL.\n");
         return -1;
     }
+
+    // Open firmware file
+    Firmware *firmware = new HcBinFile(m_inFilename);
         
     // BNO08x DFU
     BnoDfu bnoDfu;
     printf("Starting DFU for BNO08x.\n");
-    if (!bnoDfu.run(pHal)) {
+    if (!bnoDfu.run(pHal, firmware)) {
         // DFU Failed.
         std::cout << "ERROR: DFU for BNO08x failed.\n";
+        delete firmware;
         return -1;
     }
     
     printf("DFU completed successfully.\n");
+    delete firmware;
     return 0;
 }
 
@@ -458,7 +463,7 @@ int Sh2Logger::do_dfu_fsp() {
         std::cout << "ERROR: No serial device specified, use --device argument." << std::endl;
         return -1;
     }
-    
+
 #ifdef _WIN32
     sh2_Hal_t *pHal = ftdi_hal_dfu_init(m_deviceArg);
 #else
@@ -472,8 +477,9 @@ int Sh2Logger::do_dfu_fsp() {
         
     // FSP200 DFU
     FspDfu fspDfu;
+    Firmware * firmware = new HcBinFile(m_inFilename);
     printf("Starting DFU for FSP200.\n");
-    if (!fspDfu.run(pHal)) {
+    if (!fspDfu.run(pHal, firmware)) {
         // DFU Failed.
         std::cout << "ERROR: DFU for FSP200 failed.\n";
         return -1;

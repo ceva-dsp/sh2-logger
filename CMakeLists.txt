@@ -38,8 +38,9 @@ add_executable(sh2_logger
     BnoDfu.cpp
     hal/bno_dfu_hal_${PLATFORM_CODE}.c
     hal/ftdi_hal_${PLATFORM_CODE}.c
-    firmware-bno.c
-    firmware-fsp200.c
+    #    firmware-bno.c
+    #    firmware-fsp200.c
+    HcBinFile.cpp
     sh2/sh2.c
     sh2/sh2_SensorValue.c
     sh2/sh2_util.c

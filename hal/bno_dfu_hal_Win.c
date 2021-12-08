@@ -227,7 +227,7 @@ static int dfu_hal_read(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len, uint32_
 static int dfu_hal_write(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len) {
     bno_dfu_hal_t *pHal = (bno_dfu_hal_t *)self;
     uint8_t *pNext = pBuffer;
-    int wrote = 0;
+    unsigned wrote = 0;
 
     // Write data from pBuffer until the full length is written.
     while (wrote < len) {

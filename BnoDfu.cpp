@@ -20,8 +20,9 @@
 #include <stdio.h>
 
 #include "BnoDfu.h"
+#include "Firmware.h"
 extern "C" {
-    #include "firmware-bno.h"
+    // #include "firmware-bno.h"
     #include "sh2_hal.h"
     #include "sh2_err.h"
 }
@@ -172,7 +173,7 @@ int BnoDfu::sendPkt(uint8_t* pData, uint32_t len)
 }
 
 // Run DFU Process
-bool BnoDfu::run(sh2_Hal_t *pHal_) {
+bool BnoDfu::run(sh2_Hal_t *pHal_, Firmware* firmware) {
     int rc;
     int status = SH2_OK;
     uint32_t appLen = 0;
@@ -183,7 +184,7 @@ bool BnoDfu::run(sh2_Hal_t *pHal_) {
     pHal = pHal_;
 
     // Open the hcbin object
-    rc = firmware.open();
+    rc = firmware->open();
     if (rc != 0) {
         printf("Failed to open firmware.\n");
         status = SH2_ERR;
@@ -191,7 +192,7 @@ bool BnoDfu::run(sh2_Hal_t *pHal_) {
     }
 
     // Validate firmware matches this implementation
-    s = firmware.getMeta("FW-Format");
+    s = firmware->getMeta("FW-Format");
     if ((s == 0) || (strcmp(s, "BNO_V1") != 0)) {
         // No format info or Incorrect format
         printf("No format or incorrect format firmware.\n");
@@ -200,7 +201,7 @@ bool BnoDfu::run(sh2_Hal_t *pHal_) {
     }
 
     // Validate firmware is for the right part number
-    s = firmware.getMeta("SW-Part-Number");
+    s = firmware->getMeta("SW-Part-Number");
     if (s == 0) {
         // No part number info
         printf("No part number info for firmware.\n");
@@ -218,7 +219,7 @@ bool BnoDfu::run(sh2_Hal_t *pHal_) {
     }
 
     // Validate firmware length
-    appLen = firmware.getAppLen();
+    appLen = firmware->getAppLen();
     if (appLen < 1024) {
         // App data is empty
         printf("App data is empty, dummy firmware image?.\n");
@@ -227,7 +228,7 @@ bool BnoDfu::run(sh2_Hal_t *pHal_) {
     }
 
     // Determine packet length to use
-    packetLen = firmware.getPacketLen();
+    packetLen = firmware->getPacketLen();
     if ((packetLen == 0) || (packetLen > MAX_PACKET_LEN)) {
         packetLen = MAX_PACKET_LEN;
     }
@@ -262,7 +263,7 @@ bool BnoDfu::run(sh2_Hal_t *pHal_) {
         }
 
         // Extract this packet's content from hcbin
-        status = firmware.getAppData(dfuBuff, offset, toSend);
+        status = firmware->getAppData(dfuBuff, offset, toSend);
         if (status != SH2_OK) {
             goto close_and_return;
         }
@@ -279,7 +280,7 @@ bool BnoDfu::run(sh2_Hal_t *pHal_) {
 
 close_and_return:
     // close firmware
-    firmware.close();
+    firmware->close();
 
     // If update process completed successfully, delay a bit to let
     // flash writes complete.

@@ -20,9 +20,13 @@
 
 #include "sh2/sh2_hal.h"
 
+#if 1  // TODO: clean up
+#include "Firmware.h"
+#else
 extern "C" {
     #include "firmware-fsp200.h"
 }
+#endif
 
 #define MAX_PACKET_LEN (64)
 
@@ -67,7 +71,7 @@ class FspDfu {
     void *m_pShtp;
     int m_status;
     bool m_firmwareOpened;
-    const HcBin_t *m_firmware;
+    Firmware *m_firmware;
     uint32_t m_appLen;
 
     uint16_t m_wordOffset;
@@ -99,7 +103,7 @@ class FspDfu {
 
   public:
     // Run DFU Process
-    bool run(sh2_Hal_t *pHal);
+    bool run(sh2_Hal_t *pHal, Firmware *firmware);
 };
 
 #endif // ifndef FSPDFU_H

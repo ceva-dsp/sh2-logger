@@ -18,9 +18,13 @@
 #ifndef BNODFU_H
 #define BNODFU_H
 
+extern "C" {
 #include "sh2/sh2_hal.h"
+}
 
 #define MAX_PACKET_LEN (64)
+
+class Firmware;
 
 // DFU Process for BNO08x and related modules
 class BnoDfu {
@@ -43,7 +47,7 @@ class BnoDfu {
   public:
     // Public API
     // Run DFU Process
-    bool run(sh2_Hal_t *pHal);
+    bool run(sh2_Hal_t *pHal, Firmware *firmware);
 };
 
 #endif // ifndef BNODFU_H

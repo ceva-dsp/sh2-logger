@@ -20,15 +20,7 @@
 
 #include "sh2/sh2_hal.h"
 
-#if 1  // TODO: clean up
 #include "Firmware.h"
-#else
-extern "C" {
-    #include "firmware-fsp200.h"
-}
-#endif
-
-#define MAX_PACKET_LEN (64)
 
 // ------------------------------------------------------------------------
 // Type definitions

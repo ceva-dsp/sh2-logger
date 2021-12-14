@@ -73,21 +73,8 @@ static const uint32_t MaxPathLen = 260;
 // =================================================================================================
 // LOCAL VARIABLES
 // =================================================================================================
-#if 0 // TODO remove
-// #ifdef _WIN32
-static TimerSrvWin timer_;
-static FtdiHalWin ftdiHal_;
-// #else
-static TimerSrvRpi timer_;
-static FtdiHalRpi ftdiHal_;
-// #endif
-#endif
 
-// TODO: Move all these globals to a more suitable scope.
-static LoggerApp loggerApp_;
-static FspDfu fspDfu_;
-static ConsoleLogger consoleLogger_;
-static Logger * logger_;
+// Is set to false in Break handler to stop application gracefully.
 volatile static bool runApp_ = true;
 
 class Sh2Logger {
@@ -124,7 +111,7 @@ class Sh2Logger {
 
 void Sh2Logger::parseArgs(int argc, const char *argv[]) {
     // Process command line args
-    TCLAP::CmdLine cmd("SH2 Logging utility", ' ', "0.1"); // TODO-DW : Version via CMakeFile
+    TCLAP::CmdLine cmd("SH2 Logging utility", ' ', "1.0");
 
     // Command: log (default), dfu,
     std::vector<std::string> operations = {"log", "dfu-bno", "dfu-fsp200", "template"};
@@ -269,6 +256,7 @@ int Sh2Logger::do_template() {
 }
 
 int Sh2Logger::do_logging() {
+
     // Start logging
     if (!m_inFilenameSet) {
         std::cout << "ERROR: No config file specified, use -i or --input argument." << std::endl;
@@ -283,6 +271,9 @@ int Sh2Logger::do_logging() {
         return -1;
     }
 
+    ConsoleLogger consoleLogger;
+    Logger* logger;
+    LoggerApp loggerApp;
     LoggerApp::appConfig_s appConfig;
     DsfLogger dsfLogger;
     
@@ -315,21 +306,16 @@ int Sh2Logger::do_logging() {
 	// Initialize DSF Logger
     bool rv = dsfLogger.init(m_outFilename.c_str(), appConfig.orientationNed);
     if (rv) {
-        logger_ = &dsfLogger;
+        logger = &dsfLogger;
     } else {
         std::cout << "ERROR: Unable to open dsf file:  \"" << m_outFilename << "\"" << std::endl;
         std::cout << "ERROR: Display sensor data on the console instead." << std::endl;
 
         // Issue with the specified DSF output file path.
         // Use the ConsoleLogger to show sensor data on the console instead.
-        consoleLogger_.init(m_outFilename.c_str(), appConfig.orientationNed);
-        logger_ = &consoleLogger_;
+        consoleLogger.init(m_outFilename.c_str(), appConfig.orientationNed);
+        logger = &consoleLogger;
     }
-
-#if 0
-    // Initialize Timer
-    timer_.init();
-#endif
 
     // Initialze FTDI HAL
     int status;
@@ -348,7 +334,7 @@ int Sh2Logger::do_logging() {
     /// FtdiHal* pFtdiHal = &ftdiHal_;
 
     // Initialize the LoggerApp
-    status = loggerApp_.init(&appConfig, pHal, logger_);
+    status = loggerApp.init(&appConfig, pHal, logger);
     if (status != 0) {
         std::cout << "ERROR: Initialize LoggerApp failed!\n";
         return -1;
@@ -394,12 +380,12 @@ int Sh2Logger::do_logging() {
         }
 #endif
 
-        loggerApp_.service();
+        loggerApp.service();
     }
 
     std::cout << "\nINFO: Shutting down" << std::endl;
 
-    loggerApp_.finish();
+    loggerApp.finish();
 
 #ifdef _WIN32
     SetConsoleMode(hstdin, mode);
@@ -497,7 +483,6 @@ static LoggerApp::sensorList_t sensorsToEnable_;
 // =================================================================================================
 // LOCAL FUNCTIONS
 // =================================================================================================
-// TODO-DW : Make breakHandler work under WIN32, too.
 #ifndef _WIN32
 void breakHandler(int signo) {
     if (signo == SIGINT) {

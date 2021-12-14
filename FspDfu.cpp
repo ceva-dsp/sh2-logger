@@ -108,6 +108,7 @@ void FspDfu::openFirmware() {
     // Open the hcbin object
     int rc = m_firmware->open();
     if (rc != 0) {
+        // TODO : Feed back error cause to user.
         m_status = SH2_ERR;
         return;
     }
@@ -400,7 +401,7 @@ bool FspDfu::run(sh2_Hal_t *pHal_, Firmware *firmware) {
     
     // Open firmware and validate it
     m_firmware = firmware;
-    m_status = m_firmware->open();
+    openFirmware();
     if (m_status != SH2_OK) goto fin;
     
     // Initialize SHTP layer
@@ -409,7 +410,7 @@ bool FspDfu::run(sh2_Hal_t *pHal_, Firmware *firmware) {
         return false;
     }
 
-    // register channel hadnlers for DFU
+    // register channel handlers for DFU
     shtp_listenChan(m_pShtp, CHAN_BOOTLOADER_CONTROL, hdlr, this);
 
     // service SHTP until DFU process completes

@@ -2,11 +2,8 @@
     "calEnable": "0x08",
     "clearDcd": false,
     "dcdAutoSave": false,
-    "deviceNumber": 0,
     "orientation": "ned",
-    "outDsfFile": "out.dsf",
     "rawSampleTime": false,
-    "deviceNumber": 0,
     "sensorList": {
         "Game Rotation Vector": 100,
         "Gyroscope": 100,
@@ -17,6 +14,7 @@
         "Linear Acceleration": 100,
         "Raw Accelerometer": 100,
         "Raw Gyroscope": 100,
-        "Uncalibrated Gyroscope": 100
+        "Uncalibrated Gyroscope": 100,
+        "Wheel Encoder": 100
     }
 }

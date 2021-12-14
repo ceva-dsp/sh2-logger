@@ -604,6 +604,13 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             outFile_ << pValue->un.deadReckoningPose.timestamp << "\n";
             break;
         }
+        case SH2_WHEEL_ENCODER:{
+            outFile_ << static_cast<uint32_t>(pValue->un.wheelEncoder.timestamp) << ",";
+            outFile_ << static_cast<uint16_t>(pValue->un.wheelEncoder.wheelIndex) << ",";
+            outFile_ << static_cast<uint16_t>(pValue->un.wheelEncoder.dataType) << ",";
+            outFile_ << static_cast<uint16_t>(pValue->un.wheelEncoder.data) << "\n";
+            break;
+        }
         default:
             break;
     }
@@ -626,7 +633,8 @@ void DsfLogger::WriteChannelDefinition(uint8_t sensorId, bool orientation) {
 
     if (orientation) {
         if (sensorId != SH2_RAW_ACCELEROMETER && sensorId != SH2_RAW_GYROSCOPE &&
-            sensorId != SH2_RAW_MAGNETOMETER) {
+            sensorId != SH2_RAW_MAGNETOMETER && sensorId != SH2_RAW_OPTICAL_FLOW 
+            && sensorId != SH2_WHEEL_ENCODER) {
             outFile_ << "!" << static_cast<int32_t>(sensorId) << " coordinate_system=";
             if (orientationNed_) {
                 outFile_ << "\"NED\"\n";

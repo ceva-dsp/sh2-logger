@@ -129,39 +129,44 @@ void Sh2Logger::parseArgs(int argc, const char *argv[]) {
     // Command: log (default), dfu,
     std::vector<std::string> operations = {"log", "dfu-bno", "dfu-fsp200", "template"};
     TCLAP::ValuesConstraint<std::string> opConstr(operations);
-    TCLAP::UnlabeledValueArg<std::string> cmdArg("command", "operation to perform", true, "log", &opConstr);
+    TCLAP::UnlabeledValueArg<std::string> cmdArg("command", "Operation to perform", true, "log", &opConstr);
     cmd.add(cmdArg);
 
     // --input
     // optional, This is the .json filename for logging or a firmware file for DFU.
-    TCLAP::ValueArg<std::string> inFilenameArg("i", "input", "input filename", false, "", "filename");
+    TCLAP::ValueArg<std::string> inFilenameArg("i", "input", 
+                                               "Input filename (configuration for 'log' command, firmware file for DFU)", 
+                                               false, "", "filename");
     cmd.add(inFilenameArg);
 
     // --output filename
     // Only required for log operation.
-    TCLAP::ValueArg<std::string> outFilenameArg("o", "output", "output filename", false, "", "filename");
+    TCLAP::ValueArg<std::string> outFilenameArg("o", "output", 
+                                                "Output filename (sensor .dsf log for 'log' command, logger .json configuration for 'template' command)", 
+                                                false, "", "filename");
     cmd.add(outFilenameArg);
 
 #ifdef _WIN32    
     // --device device_number
-    TCLAP::ValueArg<unsigned> deviceArg("d", "device", "serial port number",
+    TCLAP::ValueArg<unsigned> deviceArg("d", "device", "FTDI device number (0 if only one FTDI UART<->USB adapter is connected.)",
                                            false, 1, "device-num");
     cmd.add(deviceArg);
 #else
     // --device device_name
-    TCLAP::ValueArg<std::string> deviceArg("d", "device", "serial port device name",
+    TCLAP::ValueArg<std::string> deviceArg("d", "device", 
+                                           "Serial port device name",
                                            false, "", "device-name");
     cmd.add(deviceArg);
 #endif
 
     // --clear-dcd
     // clears DCD at start of session.
-    TCLAP::SwitchArg clearDcdArg("", "clear-dcd", "Clear dynamic cal at start", false);
+    TCLAP::SwitchArg clearDcdArg("", "clear-dcd", "Clear dynamic IMU calibration at logger start", false);
     cmd.add(clearDcdArg);
     
     // --clear-of-cal
     // clears optical flow cal at start of session.
-    TCLAP::SwitchArg clearOfCalArg("", "clear-of-cal", "Clear optical flow cal at start", false);
+    TCLAP::SwitchArg clearOfCalArg("", "clear-of-cal", "Clear optical flow calibration at logger start", false);
     cmd.add(clearOfCalArg);
 
     // Parse them arguments
@@ -251,6 +256,7 @@ int Sh2Logger::do_template() {
                         {"rate", 0},
                         {"sensorSpecific",0}}},                     // 0x2C
                 { "Dead Reckoning Pose", 0},                    // 0x2D
+                { "Wheel Encoder", 0},                          // 0x2E
             } //sensorList value 
         }, //sensorList
     };
@@ -622,6 +628,7 @@ bool ParseJsonBatchFile(std::string inFilename, LoggerApp::appConfig_s* pAppConf
                         } else if (strcmp(sc.key().c_str(), "sensorSpecific") == 0){
                             config.sensorSpecific = sc.value();
                         }
+                        //TODO: add sniffEnabled
                     }
                 }
                 config.reportInterval_us = 0;

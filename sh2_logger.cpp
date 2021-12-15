@@ -492,7 +492,6 @@ static LoggerApp::sensorList_t sensorsToEnable_;
 #ifndef _WIN32
 void breakHandler(int signo) {
     if (signo == SIGINT) {
-        fprintf(stderr, "break!\n");
         if (!runApp_) {
             fprintf(stderr, "force quit\n");
             exit(0);

@@ -17,10 +17,16 @@
 
 #include "ftdi_hal.h"
 
-#include <Windows.h>
 #include <stdbool.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <stdarg.h>
 #include <stdio.h>
-#include "ftd2xx.h"
+#include <string.h>
+#include <errno.h>
+#include <time.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "sh2_err.h"
 
@@ -29,10 +35,8 @@
 #define PROTOCOL_CONTROL (0)
 #define PROTOCOL_SHTP (1)
 
-#define DEFAULT_BAUD_RATE (3000000)
+#define DEFAULT_BAUD_RATE (B3000000)
 
-static const UCHAR LATENCY_TIMER = 1;
-static const UCHAR LATENCY_TIMER_STARTUP = 10;
 static const uint32_t RESET_DELAY_US = 10000;
 static const uint32_t DFU_BOOT_DELAY_US = 50000;
 static const uint32_t SH2_BOOT_DELAY_US = 150000;
@@ -43,66 +47,86 @@ typedef enum {
     ESCAPED,       // Inside frame, after escape char
 } RxState_t;
 
-// Augmented HAL structure
+// Augmented HAL structure with BNO DFU on Windows specific fields.
 struct ftdi_hal_s {
     sh2_Hal_t hal_fns;            // must be first so (sh2_Hal_t *) can be cast as (ftdi_hal_t *)
 
     bool dfu;
-    DWORD baud;
+    speed_t baud;
     bool is_open;
-    bool latencySet;
-    unsigned deviceIdx;
-    HANDLE ftHandle;
-    HANDLE commEvent;
+    int fd;
+    const char * device_filename;
+
     uint16_t lastBsn;
     uint8_t rxFrame[SH2_HAL_MAX_PAYLOAD_IN];
     uint32_t rxFrameLen;
     bool rxFrameReady;
     uint32_t rxFrameStartTime_us;
     RxState_t rxState;
-    bool anyRx;
     // TODO-DW : make sure all fields initialized in init(), open()
 };
 typedef struct ftdi_hal_s ftdi_hal_t;
 
 // Set RESETN to state.
 static void setResetN(ftdi_hal_t* pHal, bool state) {
+    // RESETN connected to DTR
+    int resetSignal = TIOCM_DTR;
+    int status = 0;
+    ioctl(pHal->fd, TIOCMGET, &status);
+    
     if (state) {
-        FT_ClrDtr(pHal->ftHandle);
-    } else {
-        FT_SetDtr(pHal->ftHandle);
+        // Clear the signal (logic level inverted, this outputs high.)
+        status &= ~resetSignal;
     }
+    else {
+        // Set the signal (logic level inverted, this outputs low.)
+        status |= resetSignal;
+    }
+    ioctl(pHal->fd, TIOCMSET, &status);
 }
 
 // Set BOOTN to state.
 static void setBootN(ftdi_hal_t* pHal, bool state) {
+    // BOOTN connected to RTS
+    int bootnSignal = TIOCM_RTS;
+    
+    int status;
+    ioctl(pHal->fd, TIOCMGET, &status);
+    
     if (state) {
-        FT_ClrRts(pHal->ftHandle);
-    } else {
-        FT_SetRts(pHal->ftHandle);
+        // Clear the signal (logic level inverted, this outputs high.)
+        status &= ~bootnSignal;
     }
+    else {
+        // Set the signal (logic level inverted, this outputs low.)
+        status |= bootnSignal;
+    }
+    ioctl(pHal->fd, TIOCMSET, &status);
+}
+
+static void uart_errno_printf(const char* s, ...) {
+    va_list vl;
+    va_start(vl, s); // initializes vl with arguments after s. accessed by int=va_arg(vl,int)
+    vfprintf(stderr, s, vl);
+    fprintf(stderr, " errno = %d (%s)\n", errno, strerror(errno));
+    fflush(stderr);
+    va_end(vl);
 }
 
 static uint32_t time32_now_us() {
     static uint64_t initialTimeUs = 0;
-    static uint64_t freq = 0;
-    uint64_t counterTime;
-    uint64_t t_us = 0;
+	uint64_t t_us = 0;
 
-    QueryPerformanceCounter((LARGE_INTEGER*)&counterTime);
+	struct timespec tp;
+	clock_gettime(CLOCK_MONOTONIC, &tp);
+	t_us = ((uint32_t)tp.tv_sec * 1000000) + ((uint32_t)tp.tv_nsec / 1000.0);
 
-    if (freq == 0) {
-        QueryPerformanceFrequency((LARGE_INTEGER*)&freq);
-    }
-    
-	t_us = (uint64_t)(counterTime * 1000000 / freq);
+	if (initialTimeUs == 0) {
+		initialTimeUs = t_us;
+	}
+	t_us -= initialTimeUs;
 
-    if (initialTimeUs == 0) {
-        initialTimeUs = t_us;
-    }
-    t_us -= initialTimeUs;
-
-    return (uint32_t)t_us;
+	return (uint32_t)t_us;
 }
 
 static void delay_us(uint32_t t) {
@@ -175,6 +199,7 @@ static void rfc1662_decode(ftdi_hal_t* pHal, uint8_t c) {
 
 static int ftdi_hal_open(sh2_Hal_t *self) {
     ftdi_hal_t *pHal = (ftdi_hal_t *)self;
+    struct termios tty;
 
     // Return error if already open
     if (pHal->is_open) return SH2_ERR;
@@ -182,57 +207,54 @@ static int ftdi_hal_open(sh2_Hal_t *self) {
     // Mark as open
     pHal->is_open = true;
 
-    // clear anyRx flag.  This will be used to establish LATENCY_TIMER once data is received.
-    pHal->anyRx = false;
-
     // reset de-framer
     rfc1662_reset(pHal);
 
     pHal->lastBsn = 0;
     pHal->rxFrameStartTime_us = time32_now_us();
                         
-    FT_STATUS status;
-    status = FT_Open(pHal->deviceIdx, &pHal->ftHandle);
-    if (status != FT_OK) {
-        fprintf(stderr, "Unable to find an FTDI COM port\n");
-        return SH2_ERR_BAD_PARAM;
+    // Open device file
+    if ((pHal->fd = open(pHal->device_filename, O_RDWR | O_NOCTTY | O_NONBLOCK)) == -1) {
+        uart_errno_printf("uart_connect: OPEN %s:", pHal->device_filename);
+        pHal->is_open = false;
+        return SH2_ERR_IO;
     }
-
-    LONG comPort = -1;
-    status = FT_GetComPortNumber(pHal->ftHandle, &comPort);
-    fprintf(stderr, "FTDI device found on COM%d\n", comPort);
-
-    status = FT_SetBaudRate(pHal->ftHandle, pHal->baud);
-    if (status != FT_OK) {
-        fprintf(stderr, "Unable to set baud rate to: %d\n", pHal->baud);
-        return SH2_ERR_BAD_PARAM;
+    
+    // Get attributes
+    if (tcgetattr(pHal->fd, &tty) < 0) {
+        uart_errno_printf("Unable to read port attributes: %s", pHal->device_filename);
+        pHal->is_open = false;
+        close(pHal->fd);
+        return SH2_ERR_IO;
     }
+    tty.c_iflag &=
+            ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON | IXOFF); //| IGNPAR
+    tty.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+    tty.c_oflag &= ~OPOST;
+    tty.c_cflag &= ~(CSIZE | PARENB);
+    tty.c_cflag |= CS8 | CREAD | CLOCAL;
 
-    status = FT_SetFlowControl(pHal->ftHandle, FT_FLOW_NONE, 0, 0);
-    if (status != FT_OK) {
-        fprintf(stderr, "Failed to set flow control\n");
-    }
+    tty.c_cflag &= ~CSTOPB;
+    tty.c_cflag &= ~CRTSCTS;
 
-    status = FT_SetDataCharacteristics(pHal->ftHandle, FT_BITS_8, FT_STOP_BITS_1, FT_PARITY_NONE);
-    if (status != FT_OK) {
-        fprintf(stderr, "Unable to set data characteristics\n");
+    // Set speed
+    cfsetispeed(&tty, pHal->baud);
+    cfsetospeed(&tty, pHal->baud);
+
+    // VMIN and VTIME so data is returned ASAP
+    tty.c_cc[VMIN] = 0;
+    tty.c_cc[VTIME] = 0;
+
+    // Set attributes
+    if (tcsetattr(pHal->fd, TCSANOW, &tty) < 0) {
+        uart_errno_printf("Unable to set port attributes for %s", pHal->device_filename);
+        pHal->is_open = false;
+        close(pHal->fd);
         return SH2_ERR_IO;
     }
 
-    status = FT_SetLatencyTimer(pHal->ftHandle, LATENCY_TIMER_STARTUP);
-    if (status != FT_OK) {
-        fprintf(stderr, "Unable to set latency timer to: %d\n", LATENCY_TIMER_STARTUP);
-        return SH2_ERR_IO;
-    }
-
-    status = FT_SetTimeouts(pHal->ftHandle, 1000, 3000);
-    if (status != FT_OK) {
-        fprintf(stderr, "Unable to set timeouts.\n");
-        return SH2_ERR_IO;
-    }
-
-    pHal->commEvent = CreateEvent(NULL, false, false, "");
-    FT_SetEventNotification(pHal->ftHandle, FT_EVENT_RXCHAR, pHal->commEvent);
+    fsync(pHal->fd);
+    tcflush(pHal->fd, TCIOFLUSH);
 
     // Reset into bootloader
     setResetN(pHal, false);   // Assert reset
@@ -273,69 +295,54 @@ static void ftdi_hal_close(sh2_Hal_t *self) {
     pHal->is_open = false;
 
     // Close descriptor
-    FT_Close(pHal->ftHandle);
+    close(pHal->fd);
 }
 
 static int ftdi_hal_read(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len, uint32_t *t_us) {
     int retval = 0;
-    DWORD rxBytes;
-    DWORD txBytes;
-    DWORD eventDWord;
     uint8_t c;
-    DWORD bytesRead;
 
     ftdi_hal_t* pHal = (ftdi_hal_t*)self;
-    
-    // Figure out how much we can read
-	FT_GetStatus(pHal->ftHandle, &rxBytes, &txBytes, &eventDWord);
 
-    // process as many input chars as we can
-    for (unsigned n = 0; n < rxBytes; n++) {
-        if (FT_Read(pHal->ftHandle, &c, 1, &bytesRead) == FT_OK) {
+    int status;
+    status = read(pHal->fd, &c, 1);
+    while (status > 0) {
+        // incorporate c into frame under construction
+        rfc1662_decode(pHal, c);
 
-            // Reset LATENCY_TIMER as soon as data is received.
-            if (!pHal->anyRx) {
-                FT_SetLatencyTimer(pHal->ftHandle, LATENCY_TIMER);
-                pHal->anyRx = true;
+        // If a full frame is ready
+        if (pHal->rxFrameReady) {
+            // If it's a BSN, update lastBsn
+            if ((pHal->rxFrameLen > 0) && (pHal->rxFrame[0] == PROTOCOL_CONTROL)) {
+                pHal->lastBsn = (pHal->rxFrame[2]<<8) + pHal->rxFrame[1];
+                rfc1662_reset(pHal);
             }
-
-            // Decode this char
-            rfc1662_decode(pHal, c);
-
-            // If a full frame is ready
-            if (pHal->rxFrameReady) {
-                if ((pHal->rxFrameLen > 0) && (pHal->rxFrame[0] == PROTOCOL_CONTROL)) {
-                    // This is a BSN
-                    pHal->lastBsn = (pHal->rxFrame[2]<<8) + pHal->rxFrame[1];
-                    rfc1662_reset(pHal);
-                }
-                else {
-                    // An SHTP frame is in rxFrame
-                    if (pHal->rxFrameLen > sizeof(pHal->rxFrame)) {
-                        // frame was truncated, discard it.
-                        rfc1662_reset(pHal);
-                    }
-                    else if (pHal->rxFrameLen > len) {
-                        // frame won't fit in user's buffer, discard it.
-                        rfc1662_reset(pHal);
-                    }
-                    else {
-                        // Copy the frame into user's buffer
-                        // (Don't include first byte, the UART protocol id field.)
-                        memcpy(pBuffer, pHal->rxFrame+1, pHal->rxFrameLen-1);
-                        retval = pHal->rxFrameLen;
-                        *t_us = pHal->rxFrameStartTime_us;
-                        rfc1662_reset(pHal);
-                        break;
-                    }
-                }
-                pHal->rxFrameReady = false;
+            else if (pHal->rxFrameLen > sizeof(pHal->rxFrame)) {
+                // frame was too big for HAL to store, discard
+                rfc1662_reset(pHal);
+            }
+            else if (pHal->rxFrameLen > len) {
+                // frame is too big for client to store, discard
+                rfc1662_reset(pHal);
+            }
+            else {
+                // Copy the frame into the user's buffer
+                // (First byte is UART protocol id, it doesn't go to SHTP layer.)
+                memcpy(pBuffer, pHal->rxFrame+1, pHal->rxFrameLen-1);
+                retval = pHal->rxFrameLen;
+                *t_us = pHal->rxFrameStartTime_us;
+                rfc1662_reset(pHal);
+                break;
             }
         }
-        else {
-            // Error from read, abort this frame
-            rfc1662_reset(pHal);
-        }
+
+        // Read next char
+        status = read(pHal->fd, &c, 1);
+    }
+
+    // If there was a real error from read, reset decoder
+    if ((status < 0) && (errno != EAGAIN) && (errno != EWOULDBLOCK)) {
+        rfc1662_reset(pHal);
     }
 
     return retval;
@@ -405,11 +412,14 @@ static int ftdi_hal_write(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len) {
         // and having the USB latency setting at 1ms, we can effectively limit
         // the data rate as needed.
         unsigned written = 0;
-        for (unsigned n = 0; n < encodedLen; n+=written) {
+        while (written < encodedLen) {
             // transmit c.
-            FT_STATUS status = FT_Write(pHal->ftHandle, writeBuf+n, 1, &written);
-            if (status != FT_OK) {
-                // fail with I/O error
+            int status = write(pHal->fd, &writeBuf[written], 1);
+            if (status > 0) {
+                written += 1;
+            }
+            else if ((status < 0) && (errno != EAGAIN)) {
+                // I/O error!
                 return SH2_ERR_IO;
             }
         }
@@ -421,10 +431,13 @@ static int ftdi_hal_write(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len) {
         // transmit a buffer status query to ensure we get a buffer
         // status notification update.
         int written = 0;
-        for (unsigned n = 0; n < sizeof(BSQ); n += written) {
-            FT_STATUS status = FT_Write(pHal->ftHandle, (void *)(BSQ + n), 1, &written);
-            if (status != FT_OK) {
-                // fail with I/O error
+        while (written < sizeof(BSQ)) {
+            int status = write(pHal->fd, &BSQ[written], 1);
+            if (status > 0) {
+                written += 1;
+            }
+            else if ((status < 0) && (errno != EAGAIN)) {
+                // I/O error!
                 return SH2_ERR_IO;
             }
         }
@@ -436,7 +449,7 @@ static int ftdi_hal_write(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len) {
     return retval;
 }
 
-static int ftdi_hal_getTimeUs(sh2_Hal_t *self) {
+static uint32_t ftdi_hal_getTimeUs(sh2_Hal_t *self) {
     return time32_now_us();
 }
 
@@ -453,13 +466,11 @@ static ftdi_hal_t ftdi_hal = {
     .dfu = false,
     .baud = DEFAULT_BAUD_RATE,
     .is_open = false,
-    .latencySet = false,
-    .deviceIdx = 0,
-    .ftHandle = 0,
-    .commEvent = 0,
+    .fd = 0,
+    .device_filename = "",
 };
 
-// dfu_hal instance data
+// dfu_hal instance data (used for FSP200 DFU)
 static ftdi_hal_t dfu_hal = {
     .hal_fns = {
         .open = ftdi_hal_open,
@@ -472,18 +483,17 @@ static ftdi_hal_t dfu_hal = {
     .dfu = true,
     .baud = DEFAULT_BAUD_RATE,
     .is_open = false,
-    .latencySet = false,
-    .deviceIdx = 0,
-    .ftHandle = 0,
-    .commEvent = 0,
+    .fd = 0,
+    .device_filename = "",
 };
 
 // ---------------------------------------------------------
 // Public functions
 
-sh2_Hal_t * ftdi_hal_init(unsigned deviceIdx) {
+sh2_Hal_t * ftdi_hal_init(const char *device_filename) {
     // Save reference to device file name, etc.
-    ftdi_hal.deviceIdx = deviceIdx;
+    ftdi_hal.fd = 0;
+    ftdi_hal.device_filename = device_filename;
     ftdi_hal.dfu = false;
     ftdi_hal.baud = DEFAULT_BAUD_RATE;
 
@@ -491,14 +501,13 @@ sh2_Hal_t * ftdi_hal_init(unsigned deviceIdx) {
     return &(ftdi_hal.hal_fns);
 }
 
-sh2_Hal_t * ftdi_hal_dfu_init(unsigned deviceIdx) {
+sh2_Hal_t * ftdi_hal_dfu_init(const char * device_filename) {
     // Save reference to device file name, etc.
-    dfu_hal.deviceIdx = deviceIdx;
+    dfu_hal.fd = 0;
+    dfu_hal.device_filename = device_filename;
     dfu_hal.dfu = true;
     dfu_hal.baud = DEFAULT_BAUD_RATE;
 
     // give caller the list of access functions.
     return &(dfu_hal.hal_fns);
 }
-
-

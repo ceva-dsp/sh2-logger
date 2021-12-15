@@ -19,17 +19,16 @@
 #define FTDI_HAL_H
 
 #include "sh2_hal.h"
+#ifndef _WIN32
+#include <termios.h>
+#endif
 
 #ifdef _WIN32
 sh2_Hal_t * ftdi_hal_init(unsigned deviceIdx);
-sh2_Hal_t* ftdi_hal_autobaud_init(unsigned deviceIdx, uint32_t baud);
 sh2_Hal_t * ftdi_hal_dfu_init(unsigned deviceIdx);
-sh2_Hal_t* ftdi_hal_autobaud_dfu_init(unsigned deviceIdx, uint32_t baud);
 #else
 sh2_Hal_t * ftdi_hal_init(const char * device_filename);
-sh2_Hal_t* ftdi_hal_autobaud_init(const char* device_filename, uint32_t baud);
 sh2_Hal_t * ftdi_hal_dfu_init(const char * device_filename);
-sh2_Hal_t* ftdi_hal_autobaud_dfu_init(const char* device_filename, uint32_t baud);
 #endif
 
 #endif // FTDI_HAL_H

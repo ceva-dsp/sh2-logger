@@ -54,17 +54,6 @@ enum class State_e {
 // DATA TYPES
 // =================================================================================================
 
-#if 0
-// =================================================================================================
-// LOCAL FUNCTION PROTOTYPES
-// =================================================================================================
-static int Sh2HalOpen(sh2_Hal_t* self);
-static void Sh2HalClose(sh2_Hal_t* self);
-static int Sh2HalRead(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len, uint32_t* t_us);
-static int Sh2HalWrite(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len);
-static uint32_t Sh2HalGetTimeUs(sh2_Hal_t* self);
-#endif
-
 // =================================================================================================
 // LOCAL VARIABLES
 // =================================================================================================
@@ -84,18 +73,10 @@ static uint64_t sensorEventsReceived_ = 0;
 
 static uint64_t shtpErrors_ = 0;
 
-#if 0
 // =================================================================================================
 // CONST LOCAL VARIABLES
 // =================================================================================================
-static sh2_Hal_t sh2Hal_ = {
-	Sh2HalOpen,
-	Sh2HalClose,
-	Sh2HalRead,
-	Sh2HalWrite,
-	Sh2HalGetTimeUs,
-};
-#endif
+
 static sh2_Hal_t* sh2Hal_ = 0;
 
 
@@ -208,24 +189,6 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
         return -1;
     }
 
-    #if 0
-    // Stay in loop while waiting for system reset to complete
-    int retryCnt = 3; // Number of retry allowed is 3
-    while (true) {
-		if (!WaitForResetComplete(RESET_TIMEOUT_)) {
-            // Reset Timeout expired. Retry. 
-            std::cout << "ERROR: Reset timeout. Retry ..\n";
-            if (retryCnt-- <= 0) {
-                return 1;
-            }
-            ftdiHal_->softreset();
-
-        } else {
-            break;
-        }
-    }
-    #endif
-
     // ---------------------------------------------------------------------------------------------
     // Set callback for Sensor Data
     // ---------------------------------------------------------------------------------------------
@@ -260,14 +223,6 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
             // Reset the target system without clearing DCD
             sh2_reinitialize();
         }
-        
-        #if 0
-        // Wait for the system reset to complete
-        if (!WaitForResetComplete(RESET_TIMEOUT_)) {
-            std::cout << "ERROR: Failed to reset a SensorHub - Timeout \n";
-            return -1;
-        }
-        #endif
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -396,74 +351,6 @@ int LoggerApp::finish() {
     std::cout << "INFO: Shutdown complete" << std::endl;
     return 1;
 }
-
-#if 0
-// =================================================================================================
-// LOCAL FUNCTIONS
-// =================================================================================================
-// -------------------------------------------------------------------------------------------------
-// Sh2HalOpen
-// -------------------------------------------------------------------------------------------------
-static int Sh2HalOpen(sh2_Hal_t* self) {
-    return ftdiHal_->open();
-}
-
-// -------------------------------------------------------------------------------------------------
-// Sh2HalClose
-// -------------------------------------------------------------------------------------------------
-static void Sh2HalClose(sh2_Hal_t* self) {
-    ftdiHal_->close();
-}
-
-// -------------------------------------------------------------------------------------------------
-// Sh2HalRead
-// -------------------------------------------------------------------------------------------------
-static int Sh2HalRead(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len, uint32_t* t_us) {
-    return ftdiHal_->read(pBuffer, len, t_us);
-}
-
-// -------------------------------------------------------------------------------------------------
-// Sh2HalWrite
-// -------------------------------------------------------------------------------------------------
-static int Sh2HalWrite(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len) {
-    return ftdiHal_->write(pBuffer, len);
-}
-
-// -------------------------------------------------------------------------------------------------
-// Sh2HalGetTimeUs
-// -------------------------------------------------------------------------------------------------
-static uint32_t Sh2HalGetTimeUs(sh2_Hal_t* self) {
-    return (uint32_t)timer_->getTimestamp_us();
-}
-#endif
-
-#if 0
-// =================================================================================================
-// PRIVATE METHODS
-// =================================================================================================
-// -------------------------------------------------------------------------------------------------
-// LoggerApp::WaitForResetComplete
-// -------------------------------------------------------------------------------------------------
-bool LoggerApp::WaitForResetComplete(int loops) {
-    std::cout << "INFO: Waiting for System Reset " << std::endl;
-
-    for (int resetCounter = 0; state_ == State_e::Reset; ++resetCounter) {
-        // Print periodic progress indicator 
-		if (resetCounter % 10000 == 9999) {
-			std::cout << ".";
-        }
-        // Check resetCounter against 'loops' limit
-        if (resetCounter >= loops) {
-            std::cout << "\n";
-            return false;
-        }
-
-        sh2_service();
-    }
-    // state_ has been updated before resetCounter reaches 'loops' limit
-    return true;
-}
-#endif
 
 // -------------------------------------------------------------------------------------------------
 // LoggerApp::GetSensorConfiguration

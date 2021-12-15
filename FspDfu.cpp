@@ -22,7 +22,6 @@
 extern "C" {
     #include "sh2/sh2_err.h"
     #include "sh2/shtp.h"
-    #include "firmware-fsp200.h"
 }
 
 #define CHAN_BOOTLOADER_CONTROL (1)

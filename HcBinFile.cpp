@@ -26,6 +26,7 @@
  */
 
 #include "HcBinFile.h"
+
 #include <stdio.h>
 
 extern "C" {
@@ -51,6 +52,15 @@ int HcBinFile::open()
 {
     int status = SH2_OK;
 
+    uint32_t id = 0;
+    uint32_t sz = 0;
+    uint32_t ff_ver = 0;
+    uint32_t offset = 0;
+    long int pos = 0;
+    uint32_t computed_crc = 0;
+    uint32_t stored_crc = 0;
+    
+
     if (m_open) {
         // Should not open the file while already open.
         return SH2_ERR;
@@ -65,8 +75,8 @@ int HcBinFile::open()
 
     // Open file
     FILE* infile = 0;
-    errno_t err = fopen_s(&infile, m_filename.c_str(), "rb");
-    if (err != 0) {
+    infile = fopen(m_filename.c_str(), "rb");
+    if (infile == 0) {
         // Error: could not open file
         status = SH2_ERR_BAD_PARAM;
         goto cleanup;
@@ -76,7 +86,6 @@ int HcBinFile::open()
     // (on error, set status, goto cleanup so file will be closed)
     
     // read Id
-    uint32_t id;
     status = read32be(infile, &id);
     if (status != SH2_OK) goto cleanup;
     if (id != HCBIN_ID) {
@@ -86,12 +95,10 @@ int HcBinFile::open()
     }
 
     // Read File size
-    uint32_t sz;
     status = read32be(infile, &sz);
     if (status != SH2_OK) goto cleanup;
 
     // Read file format version
-    uint32_t ff_ver;
     status = read32be(infile, &ff_ver);
     if (status != SH2_OK) goto cleanup;
     if (ff_ver != HCBIN_FF_VER) {
@@ -101,7 +108,6 @@ int HcBinFile::open()
     }
 
     // Read payload offset
-    uint32_t offset;
     status = read32be(infile, &offset);
     if (status != SH2_OK) goto cleanup;
 
@@ -113,7 +119,7 @@ int HcBinFile::open()
     }
 
     // get current file position
-    long int pos = ftell(infile);
+    pos = ftell(infile);
     if (pos < 0) goto cleanup;
     if (pos > (long int)offset) goto cleanup;
 
@@ -137,8 +143,7 @@ int HcBinFile::open()
     }
 
     // Read CRC
-    uint32_t computed_crc = ~m_crc32;
-    uint32_t stored_crc;
+    computed_crc = ~m_crc32;
     status = read32be(infile, &stored_crc);
     if (status != SH2_OK) goto cleanup;
     if (stored_crc != computed_crc) {

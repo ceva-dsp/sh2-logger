@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "bno_dfu_linux.h"
+#include "bno_dfu_hal.h"
 
 #include <stdbool.h>
 #include <sys/ioctl.h>

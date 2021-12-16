@@ -195,10 +195,10 @@ int Sh2Logger::run() {
 int Sh2Logger::do_template() {
     // JSON configuration file template
     static const json templateContents = {
-        { "calEnable", "0x00" },
+        { "calEnable", "0x08" },
         { "clearDcd", false },
         { "clearOfCal", false },
-        { "dcdAutoSave", false },
+        { "dcdAutoSave", true },
         { "orientation", "ned" },
         { "rawSampleTime", false},
         { "sensorList", {
@@ -241,7 +241,8 @@ int Sh2Logger::do_template() {
                 { "IZRO Motion Request", 0 },                   // 0x2B
                 { "Raw Optical Flow", {
                         {"rate", 0},
-                        {"sensorSpecific",0}}},                     // 0x2C
+                        {"sensorSpecific",0},
+                        {"sniffEnabled",0}}},                   // 0x2C
                 { "Dead Reckoning Pose", 0},                    // 0x2D
                 { "Wheel Encoder", 0},                          // 0x2E
             } //sensorList value 
@@ -611,8 +612,9 @@ bool ParseJsonBatchFile(std::string inFilename, LoggerApp::appConfig_s* pAppConf
                             rate = sc.value();
                         } else if (strcmp(sc.key().c_str(), "sensorSpecific") == 0){
                             config.sensorSpecific = sc.value();
+                        } else if (strcmp(sc.key().c_str(), "sniffEnabled") == 0){
+                            config.sniffEnabled = sc.value();
                         }
-                        //TODO: add sniffEnabled
                     }
                 }
                 config.reportInterval_us = 0;

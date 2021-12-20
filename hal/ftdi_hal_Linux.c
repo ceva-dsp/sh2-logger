@@ -65,7 +65,6 @@ struct ftdi_hal_s {
     uint32_t rxFrameStartTime_us;
     RxState_t rxState;
     uint32_t lastBsqTime_us;
-    // TODO-DW : make sure all fields initialized in init(), open()
 };
 typedef struct ftdi_hal_s ftdi_hal_t;
 
@@ -401,7 +400,7 @@ static int ftdi_hal_write(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len) {
     ftdi_hal_t* pHal = (ftdi_hal_t*)self;
        
     // encode pBuffer
-    uint8_t writeBuf[1024];  // TODO-DW : review size.
+    uint8_t writeBuf[1024];
     uint32_t encodedLen = sizeof(writeBuf);
     bool overflow = txEncode(writeBuf, &encodedLen, pBuffer, len);
     if (overflow) {
@@ -508,6 +507,7 @@ sh2_Hal_t * ftdi_hal_init(const char *device_filename) {
     ftdi_hal.device_filename = device_filename;
     ftdi_hal.dfu = false;
     ftdi_hal.baud = DEFAULT_BAUD_RATE;
+    ftdi_hal.is_open = false;
 
     // give caller the list of access functions.
     return &(ftdi_hal.hal_fns);
@@ -519,6 +519,7 @@ sh2_Hal_t * ftdi_hal_dfu_init(const char * device_filename) {
     dfu_hal.device_filename = device_filename;
     dfu_hal.dfu = true;
     dfu_hal.baud = DEFAULT_BAUD_RATE;
+    dfu_hal.is_open = false;
 
     // give caller the list of access functions.
     return &(dfu_hal.hal_fns);

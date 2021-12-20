@@ -27,7 +27,6 @@
 #include <nlohmann/json.hpp>
 #include "tclap/CmdLine.h"
 
-/// #include "TimerService.h"
 #include "DsfLogger.h"
 #include "ConsoleLogger.h"
 #include "LoggerApp.h"
@@ -327,10 +326,8 @@ int Sh2Logger::do_logging() {
     // Initialze FTDI HAL
     int status;
 #ifdef _WIN32
-    /// status = ftdiHal_.init(m_deviceArg, &timer_);
     sh2_Hal_t *pHal = ftdi_hal_init(m_deviceArg);
 #else
-    /// status = ftdiHal_.init(m_deviceArg.c_str(), &timer_);
     sh2_Hal_t *pHal = ftdi_hal_init(m_deviceArg.c_str());
 #endif
 
@@ -338,7 +335,6 @@ int Sh2Logger::do_logging() {
         std::cout << "ERROR: Initialize FTDI HAL failed!\n";
         return -1;
     }
-    /// FtdiHal* pFtdiHal = &ftdiHal_;
 
     // Initialize the LoggerApp
     status = loggerApp.init(&appConfig, pHal, logger);

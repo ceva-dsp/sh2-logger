@@ -107,7 +107,7 @@ void FspDfu::openFirmware() {
     // Open the hcbin object
     int rc = m_firmware->open();
     if (rc != 0) {
-        // TODO : Feed back error cause to user.
+        // Could not open firmware file
         m_status = SH2_ERR;
         return;
     }

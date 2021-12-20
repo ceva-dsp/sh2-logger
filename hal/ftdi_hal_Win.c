@@ -63,7 +63,6 @@ struct ftdi_hal_s {
     RxState_t rxState;
     bool anyRx;
     uint32_t lastBsqTime_us;
-    // TODO-DW : make sure all fields initialized in init(), open()
 };
 typedef struct ftdi_hal_s ftdi_hal_t;
 
@@ -299,8 +298,11 @@ static int ftdi_hal_read(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len, uint32
 
             // Reset LATENCY_TIMER as soon as data is received.
             if (!pHal->anyRx) {
-                FT_SetLatencyTimer(pHal->ftHandle, LATENCY_TIMER);
                 pHal->anyRx = true;
+                if (!pHal->latencySet) {
+                    pHal->latencySet = true;
+                    FT_SetLatencyTimer(pHal->ftHandle, LATENCY_TIMER);
+                }
             }
 
             // Decode this char
@@ -394,7 +396,7 @@ static int ftdi_hal_write(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len) {
     ftdi_hal_t* pHal = (ftdi_hal_t*)self;
        
     // encode pBuffer
-    uint8_t writeBuf[1024];  // TODO-DW : review size.
+    uint8_t writeBuf[1024];
     uint32_t encodedLen = sizeof(writeBuf);
     bool overflow = txEncode(writeBuf, &encodedLen, pBuffer, len);
     if (overflow) {
@@ -498,6 +500,7 @@ sh2_Hal_t * ftdi_hal_init(unsigned deviceIdx) {
     ftdi_hal.deviceIdx = deviceIdx;
     ftdi_hal.dfu = false;
     ftdi_hal.baud = DEFAULT_BAUD_RATE;
+    ftdi_hal.is_open = false;
 
     // give caller the list of access functions.
     return &(ftdi_hal.hal_fns);
@@ -508,6 +511,7 @@ sh2_Hal_t * ftdi_hal_dfu_init(unsigned deviceIdx) {
     dfu_hal.deviceIdx = deviceIdx;
     dfu_hal.dfu = true;
     dfu_hal.baud = DEFAULT_BAUD_RATE;
+    dfu_hal.is_open = false;
 
     // give caller the list of access functions.
     return &(dfu_hal.hal_fns);

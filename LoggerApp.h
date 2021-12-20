@@ -89,9 +89,6 @@ private:
     // ---------------------------------------------------------------------------------------------
     // PRIVATE METHODS
     // ---------------------------------------------------------------------------------------------
-    #if 0
-    bool WaitForResetComplete(int loops);
-    #endif
     void GetSensorConfiguration(sh2_SensorId_t sensorId, sh2_SensorConfig_t* pConfig);
     bool IsRawSensor(sh2_SensorId_t sensorId);
     void ReportProgress();

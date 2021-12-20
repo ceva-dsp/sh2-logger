@@ -24,8 +24,6 @@ extern "C" {
 #include "LoggerApp.h"
 #include "LoggerUtil.h"
 #include "Logger.h"
-/// #include "FtdiHal.h"
-/// #include "TimerService.h"
 
 #include "math.h"
 #include <string.h>

@@ -48,10 +48,11 @@ public:
         sh2_SensorId_t sensorId;
         uint32_t reportInterval_us;
         uint32_t sensorSpecific;
+        uint32_t sniffEnabled;
 
         bool operator<(SensorFeatureSet_s const &other) { return sensorId < other.sensorId; }
         bool operator==(SensorFeatureSet_s const &other) { return sensorId == other.sensorId; }
-        SensorFeatureSet_s():reportInterval_us(0),sensorSpecific(0){}
+        SensorFeatureSet_s():reportInterval_us(0),sensorSpecific(0),sniffEnabled(0){}
     };
     typedef std::list<SensorFeatureSet_s> sensorList_t;
 

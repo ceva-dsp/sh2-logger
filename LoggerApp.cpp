@@ -280,6 +280,7 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
         GetSensorConfiguration(it->sensorId, &config);
         config.reportInterval_us = it->reportInterval_us;
         config.sensorSpecific = it->sensorSpecific;
+        config.sniffEnabled = it->sniffEnabled;
 
         // std::cout << "INFO: Sensor ID : " << static_cast<uint32_t>(it->sensorId);
         // std::cout << " - " << SensorSpec_[it->sensorId].name;

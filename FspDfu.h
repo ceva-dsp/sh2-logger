@@ -67,7 +67,7 @@ class FspDfu {
     uint32_t m_appLen;
 
     uint16_t m_wordOffset;
-    uint16_t m_writeLen;
+    uint8_t m_writeLen;
     
     uint32_t m_ignoredResponses;
     DfuState_t m_state;

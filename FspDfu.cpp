@@ -221,9 +221,12 @@ void FspDfu::requestWrite()
     WriteRequest_t req;
 
     // How many words to write next
-    m_writeLen = (m_appLen/4) - m_wordOffset;
-    if (m_writeLen > 16) {
+    uint32_t writeLen = (m_appLen/4) - m_wordOffset;
+    if (writeLen > 16) {
         m_writeLen = 16;
+    }
+    else {
+        m_writeLen = (uint8_t)writeLen;
     }
 
     req.reportId = ID_WRITE_REQ;

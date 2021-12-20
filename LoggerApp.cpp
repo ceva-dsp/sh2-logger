@@ -387,11 +387,13 @@ void LoggerApp::ReportProgress() {
         int32_t m = static_cast<int32_t>(floor((deltaT - h * 60 * 60) / 60.0));
         double s = deltaT - h * 60 * 60 - m * 60;
 
-        std::cout << "Samples: " << std::setfill(' ') << std::setw(10) << sensorEventsReceived_
-            << " Duration: " << h << ":" << std::setw(2) << std::setfill('0') << m << ":"
-            << std::setprecision(2) << s << " "
-            << " Rate: " << std::fixed << std::setprecision(2)
-            << sensorEventsReceived_ / deltaT << " Samples per seconds" << std::endl;
+        if (deltaT > 0) {
+            std::cout << "Samples: " << std::setfill(' ') << std::setw(10) << sensorEventsReceived_
+                      << " Duration: " << h << ":" << std::setw(2) << std::setfill('0') << m << ":"
+                      << std::setprecision(2) << s << " "
+                      << " Rate: " << std::fixed << std::setprecision(2)
+                      << sensorEventsReceived_ / deltaT << " Samples per second" << std::endl;
+        }
     }
 }
 

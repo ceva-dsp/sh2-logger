@@ -36,6 +36,7 @@ static const UCHAR LATENCY_TIMER_STARTUP = 10;
 static const uint32_t RESET_DELAY_US = 10000;
 static const uint32_t DFU_BOOT_DELAY_US = 50000;
 static const uint32_t SH2_BOOT_DELAY_US = 150000;
+static const uint32_t INTER_BSQ_DELAY_US = 10000;  // 10 ms between sending BSQs
 
 typedef enum {
     OUTSIDE_FRAME, // Waiting for start of frame
@@ -61,6 +62,7 @@ struct ftdi_hal_s {
     uint32_t rxFrameStartTime_us;
     RxState_t rxState;
     bool anyRx;
+    uint32_t lastBsqTime_us;
     // TODO-DW : make sure all fields initialized in init(), open()
 };
 typedef struct ftdi_hal_s ftdi_hal_t;
@@ -248,6 +250,8 @@ static int ftdi_hal_open(sh2_Hal_t *self) {
     
     setResetN(pHal, true);    // Deassert reset with BOOTN asserted
 
+    pHal->lastBsqTime_us = time32_now_us();
+
     // Wait until we know system is up
     if (pHal->dfu) {
         delay_us(DFU_BOOT_DELAY_US);
@@ -396,9 +400,15 @@ static int ftdi_hal_write(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len) {
     if (overflow) {
         return SH2_ERR_BAD_PARAM;  
     }
+
+    uint32_t now = time32_now_us();
     
     // if device is ready to receive this size transfer...
     if (pHal->lastBsn >= encodedLen) {
+        // Reset lastBsn.  By seinding, we're invalidating prior buffer status notification.
+        pHal->lastBsn = 0;
+        pHal->lastBsqTime_us = 0;
+        
         // write bytes one at a time.
         // The sensor hub can't handle data too fast, we need to limit it to
         // one char per millisecond, approximately.  By writing one char at a time
@@ -417,10 +427,12 @@ static int ftdi_hal_write(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len) {
         // set retval to notify caller that data was sent
         retval = len;
     }
-    else {
+    else if ((pHal->lastBsqTime_us == 0) || 
+             ((now - pHal->lastBsqTime_us) > INTER_BSQ_DELAY_US)) {
         // transmit a buffer status query to ensure we get a buffer
         // status notification update.
         int written = 0;
+        pHal->lastBsqTime_us = now;
         for (unsigned n = 0; n < sizeof(BSQ); n += written) {
             FT_STATUS status = FT_Write(pHal->ftHandle, (void *)(BSQ + n), 1, &written);
             if (status != FT_OK) {

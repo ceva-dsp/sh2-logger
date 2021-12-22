@@ -92,7 +92,7 @@ static const sensorDsfHeader_s SensorDsfHeader[] = {
     { "RawOpticalFlow",
     "MOVED{bool},LASER_ON{bool},LIN_VEL_XY[xy]{ADC},SQUAL,RES[xy],SHUTTER,FRAME_MAX,FRAME_AVG,FRAME_MIN,DT{us},SAMPLE_TIME[x]{us}" },   // 0x2C
     { "DeadReckoningPose", "LIN_POS_GLOBAL[xyz]{m},ANG_POS_GLOBAL[wxyz]{quaternion},LIN_VEL[xyz]{m/s},ANG_VEL[xyz]{rad/s},SAMPLE_TIME[x]{us}" }, // 0x2D
-    { "WheelEncoder", "TIME{s},SAMPLE_ID[x],DATA_TYPE[x],WHEEL_INDEX[x],DATA[x],TIMESTAMP{us}" }, // 0x2E
+    { "WheelEncoder", "DATA_TYPE[x],WHEEL_INDEX[x],DATA[x],SAMPLE_TIME[x]{us}" }, // 0x2E
 };
 
 static_assert((sizeof(SensorDsfHeader) / sizeof(sensorDsfHeader_s)) == (SH2_MAX_SENSOR_ID + 1),
@@ -605,10 +605,10 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_WHEEL_ENCODER:{
-            outFile_ << static_cast<uint32_t>(pValue->un.wheelEncoder.timestamp) << ",";
-            outFile_ << static_cast<uint16_t>(pValue->un.wheelEncoder.wheelIndex) << ",";
             outFile_ << static_cast<uint16_t>(pValue->un.wheelEncoder.dataType) << ",";
-            outFile_ << static_cast<uint16_t>(pValue->un.wheelEncoder.data) << "\n";
+            outFile_ << static_cast<uint16_t>(pValue->un.wheelEncoder.wheelIndex) << ",";
+            outFile_ << static_cast<uint16_t>(pValue->un.wheelEncoder.data) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.wheelEncoder.timestamp) << "\n";
             break;
         }
         default:

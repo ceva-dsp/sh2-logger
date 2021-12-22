@@ -17,6 +17,11 @@ else()
 set(PLATFORM_CODE Linux)
 endif()
 
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
+#Disable this warning, no mixing of gcc versions in this build
+set(CMAKE_CXX_FLAGS "-Wno-psabi")
+endif()
+
 # Build 
 add_executable(sh2_logger
     sh2_logger.cpp

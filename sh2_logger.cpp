@@ -15,7 +15,12 @@
  * limitations under the License.
  */
 
-#define _CRT_SECURE_NO_WARNINGS
+//Suppress warning about fopen and strcpy safety under MSVC
+#ifdef _MSC_VER
+#   ifndef _CRT_SECURE_NO_WARNINGS
+#       define _CRT_SECURE_NO_WARNINGS
+#   endif
+#endif
 
 // =================================================================================================
 // INCLUDE FILES

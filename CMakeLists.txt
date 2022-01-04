@@ -12,9 +12,9 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/tclap/include")
 
 
 if(WIN32)
-set(PLATFORM_CODE Win)
+    set(PLATFORM_CODE Win)
 else()
-set(PLATFORM_CODE Linux)
+    set(PLATFORM_CODE Linux)
 endif()
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")

@@ -38,6 +38,8 @@
 #include "LoggerUtil.h"
 #include "FspDfu.h"
 #include "BnoDfu.h"
+#include "WheelSource.h"
+#include "FileWheelSource.h"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -109,6 +111,9 @@ class Sh2Logger {
     std::string m_deviceArg;
 #endif
 
+    bool m_wheelSourceSet;
+    std::string m_wheelSource;
+
     bool m_clearDcd;
     bool m_clearOfCal;
 };
@@ -160,6 +165,13 @@ void Sh2Logger::parseArgs(int argc, const char *argv[]) {
     TCLAP::SwitchArg clearOfCalArg("", "clear-of-cal", "Clear optical flow calibration at logger start", false);
     cmd.add(clearOfCalArg);
 
+    // --wheel_source [-|file]
+    TCLAP::ValueArg<std::string> wheelSourceArg("w", "wheel_source", 
+                                                "Wheel data source. - for stdin",
+                                                false, "", "wheel_source");
+    cmd.add(wheelSourceArg);
+
+
     // Parse them arguments
     cmd.parse(argc, argv);
 
@@ -173,6 +185,8 @@ void Sh2Logger::parseArgs(int argc, const char *argv[]) {
     m_deviceArg = deviceArg.getValue();
     m_clearDcd = clearDcdArg.getValue();
     m_clearOfCal = clearOfCalArg.getValue();
+    m_wheelSourceSet = wheelSourceArg.isSet();
+    m_wheelSource = wheelSourceArg.getValue();
 }
 
 int Sh2Logger::run() {
@@ -328,6 +342,11 @@ int Sh2Logger::do_logging() {
         logger = &consoleLogger;
     }
 
+    WheelSource* wheelSource = nullptr;
+    if (m_wheelSourceSet) {
+        wheelSource = new FileWheelSource(m_wheelSource.c_str());
+    }
+
     // Initialze FTDI HAL
     int status;
 #ifdef _WIN32
@@ -342,7 +361,7 @@ int Sh2Logger::do_logging() {
     }
 
     // Initialize the LoggerApp
-    status = loggerApp.init(&appConfig, pHal, logger);
+    status = loggerApp.init(&appConfig, pHal, logger, wheelSource);
     if (status != 0) {
         std::cout << "ERROR: Initialize LoggerApp failed!\n";
         return -1;
@@ -394,6 +413,10 @@ int Sh2Logger::do_logging() {
     std::cout << "\nINFO: Shutting down" << std::endl;
 
     loggerApp.finish();
+
+    if (wheelSource != nullptr) {
+        delete wheelSource;
+    }
 
 #ifdef _WIN32
     SetConsoleMode(hstdin, mode);

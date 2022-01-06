@@ -33,6 +33,7 @@ extern "C" {
 // DATA TYPES
 // =================================================================================================
 #include "Logger.h"
+#include "WheelSource.h"
 
 // =================================================================================================
 // CLASS DEFINITON - LoggerApp
@@ -78,7 +79,8 @@ public:
     // ---------------------------------------------------------------------------------------------
     // PUBLIC METHODS
     // ---------------------------------------------------------------------------------------------
-    int init(appConfig_s* appConfig, sh2_Hal_t* pHal, Logger* logger);
+    int init(appConfig_s* appConfig, sh2_Hal_t* pHal, Logger* logger, 
+             WheelSource* wheelSource = nullptr);
 
     int service();
 

@@ -111,7 +111,7 @@ void ConsoleLogger::logProductIds(sh2_ProductIds_t ids) {
 // -------------------------------------------------------------------------------------------------
 // ConsoleLogger::logFrsRecord
 // -------------------------------------------------------------------------------------------------
-void ConsoleLogger::logFrsRecord(char const* name, uint32_t* buffer, uint16_t words) {
+void ConsoleLogger::logFrsRecord(uint16_t recordId, char const* name, uint32_t* buffer, uint16_t words) {
 }
 
 // -------------------------------------------------------------------------------------------------

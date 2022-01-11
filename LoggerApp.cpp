@@ -411,7 +411,7 @@ int LoggerApp::LogFrsRecord(uint16_t recordId, char const* name) {
     }
 
     if (words > 0) {
-        logger_->logFrsRecord(name, buffer, words);
+        logger_->logFrsRecord(recordId, name, buffer, words);
     }
     return words;
 }

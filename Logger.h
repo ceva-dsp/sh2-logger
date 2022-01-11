@@ -42,7 +42,7 @@ public:
     virtual void logAsyncEvent(sh2_AsyncEvent_t* pEvent, double timestamp) = 0;
 
     virtual void logProductIds(sh2_ProductIds_t ids) = 0;
-    virtual void logFrsRecord(char const* name, uint32_t* buffer, uint16_t words) = 0;
+    virtual void logFrsRecord(uint16_t recordId, char const* name, uint32_t* buffer, uint16_t words) = 0;
     virtual void logSensorValue(sh2_SensorValue_t* pValue, double timestamp) = 0;
 
 protected:

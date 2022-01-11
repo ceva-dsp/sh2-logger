@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 
-#ifndef FSPDFU_H
-#define FSPDFU_H
+#pragma once
 
 #include "sh2/sh2_hal.h"
 
@@ -28,24 +27,24 @@
 class FspDfu;
 
 // States of DFU process
-typedef enum {
+enum DfuState_e {
     ST_INIT,
     ST_SETTING_MODE,
     ST_SENDING_DATA,
     ST_WAIT_COMPLETION,
     ST_LAUNCHING,
     ST_FINISHED,
-} DfuState_t;
+};
 
-// DFU State machine Action typedef
-typedef DfuState_t (FspDfu::* DfuAction_t)(uint8_t *payload, uint16_t len);
+// DFU State machine Action function
+typedef DfuState_e (FspDfu::* DfuAction_t)(uint8_t *payload, uint16_t len);
 
-// DFU State machine transition typedef
-typedef struct {
-    DfuState_t state;
+// DFU State machine transition
+struct DfuTransition_s {
+    DfuState_e state;
     uint8_t reportId;
     DfuAction_t action;
-} DfuTransition_t;
+};
 
 static void hdlr(void *cookie, uint8_t *payload, uint16_t len, uint32_t timestamp);
 
@@ -55,7 +54,7 @@ class FspDfu {
 
     
   private:
-    static const DfuTransition_t dfuStateTransition[];
+    static const DfuTransition_s dfuStateTransition[];
 
   private:
     // Private Data
@@ -70,7 +69,7 @@ class FspDfu {
     uint8_t m_writeLen;
     
     uint32_t m_ignoredResponses;
-    DfuState_t m_state;
+    DfuState_e m_state;
     
   public:
     // Constructor
@@ -79,14 +78,14 @@ class FspDfu {
   private:
     // Private methods
     void requestUpgrade();
-    DfuState_t handleInitStatus(uint8_t *payload, uint16_t len);
+    DfuState_e handleInitStatus(uint8_t *payload, uint16_t len);
     void requestWrite();
-    DfuState_t handleModeResponse(uint8_t *payload, uint16_t len);
-    DfuState_t handleWriteResponse(uint8_t *payload, uint16_t len);
+    DfuState_e handleModeResponse(uint8_t *payload, uint16_t len);
+    DfuState_e handleWriteResponse(uint8_t *payload, uint16_t len);
     void requestLaunch();
-    DfuState_t handleFinalStatus(uint8_t *payload, uint16_t len);
-    DfuState_t handleLaunchResp(uint8_t *payload, uint16_t len);
-    const DfuTransition_t *findTransition(DfuState_t state, uint8_t reportId);
+    DfuState_e handleFinalStatus(uint8_t *payload, uint16_t len);
+    DfuState_e handleLaunchResp(uint8_t *payload, uint16_t len);
+    const DfuTransition_s *findTransition(DfuState_e state, uint8_t reportId);
 
 
     void initState();
@@ -97,5 +96,3 @@ class FspDfu {
     // Run DFU Process
     bool run(sh2_Hal_t *pHal, Firmware *firmware);
 };
-
-#endif // ifndef FSPDFU_H

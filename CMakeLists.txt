@@ -31,7 +31,7 @@ add_executable(sh2_logger
     FspDfu.cpp
     BnoDfu.cpp
     hal/bno_dfu_hal_${PLATFORM_CODE}.c
-    hal/ftdi_hal_${PLATFORM_CODE}.c
+    hal/ftdi_hal.c
     HcBinFile.cpp
     sh2/sh2.c
     sh2/sh2_SensorValue.c

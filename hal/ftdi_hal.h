@@ -15,13 +15,9 @@
  * limitations under the License.
  */
 
-#ifndef FTDI_HAL_H
-#define FTDI_HAL_H
+#pragma once
 
 #include "sh2_hal.h"
-#ifndef _WIN32
-#include <termios.h>
-#endif
 
 #ifdef _WIN32
 sh2_Hal_t * ftdi_hal_init(unsigned deviceIdx);
@@ -30,6 +26,4 @@ sh2_Hal_t * ftdi_hal_dfu_init(unsigned deviceIdx);
 sh2_Hal_t * ftdi_hal_init(const char * device_filename);
 sh2_Hal_t * ftdi_hal_dfu_init(const char * device_filename);
 #endif
-
-#endif // FTDI_HAL_H
 

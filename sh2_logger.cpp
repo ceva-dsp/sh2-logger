@@ -326,6 +326,7 @@ int Sh2Logger::do_logging() {
     // Initialze FTDI HAL
     int status;
 #ifdef _WIN32
+    // TODO-DW : Harmonize these
     sh2_Hal_t *pHal = ftdi_hal_init(m_deviceArg);
 #else
     sh2_Hal_t *pHal = ftdi_hal_init(m_deviceArg.c_str());

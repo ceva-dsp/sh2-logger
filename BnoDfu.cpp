@@ -22,7 +22,6 @@
 #include "BnoDfu.h"
 #include "Firmware.h"
 extern "C" {
-    // #include "firmware-bno.h"
     #include "sh2_hal.h"
     #include "sh2_err.h"
 }

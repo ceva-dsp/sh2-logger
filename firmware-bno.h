@@ -15,11 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef FIRMWARE_H
-#define FIRMWARE_H
+#pragma once
 
 #include "HcBin.h"
 
 extern const HcBin_t firmware;
-
-#endif

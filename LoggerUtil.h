@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 
-#ifndef LOGGER_UTIL_H
-#define LOGGER_UTIL_H
+#pragma once
 
 extern "C" {
 #include "sh2.h"
@@ -198,5 +197,3 @@ namespace LoggerUtil {
         return true;
     }
 };
-
-#endif // LOGGER_UTIL_H

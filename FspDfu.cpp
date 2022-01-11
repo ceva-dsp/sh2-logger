@@ -26,8 +26,7 @@ extern "C" {
 
 #define CHAN_BOOTLOADER_CONTROL (1)
 
-// DFU should complete in about 36 seconds.  Set timeout at 60.
-#define DFU_TIMEOUT_US (240000000)  // Can take up to 240 sec at 9600 baud.
+#define DFU_TIMEOUT_US (240000000)  // Can take up to 240 sec at 9600 baud.  (Typically about 36 sec, though.)
 
 // Bootloader message ids
 typedef enum {
@@ -128,7 +127,7 @@ void FspDfu::openFirmware() {
         m_status = SH2_ERR_BAD_PARAM;
         return;
     }
-    if (strcmp(s, "1000-4095") != 0) {
+    if ( (strcmp(s, "1000-4095") != 0) && (strcmp(s, "1000-4589") != 0) ) {
         // Incorrect part number
         m_status = SH2_ERR_BAD_PARAM;
         return;
@@ -148,6 +147,7 @@ void FspDfu::openFirmware() {
     }
 }
 
+// Extract 32-bit unsigned from byte stream, little endian ordering.
 static uint32_t getU32(uint8_t *payload, unsigned offset)
 {
     uint32_t value = 0;
@@ -161,6 +161,7 @@ static uint32_t getU32(uint8_t *payload, unsigned offset)
     return value;
 }
 
+// Extract 16-bit unsigned from byte stream, little endian ordering.
 static uint16_t getU16(uint8_t *payload, unsigned offset)
 {
     uint16_t value = 0;
@@ -187,9 +188,9 @@ void FspDfu::requestUpgrade()
     shtp_send(m_pShtp, CHAN_BOOTLOADER_CONTROL, (uint8_t *)&req, sizeof(req));
 }
 
-DfuState_t FspDfu::handleInitStatus(uint8_t *payload, uint16_t len)
+DfuState_e FspDfu::handleInitStatus(uint8_t *payload, uint16_t len)
 {
-    DfuState_t nextState = m_state;
+    DfuState_e nextState = m_state;
     uint32_t status = getU32(payload, 4);
     uint32_t errCode = getU32(payload, 8);
 
@@ -221,7 +222,7 @@ void FspDfu::requestWrite()
     WriteRequest_t req;
 
     // How many words to write next
-    uint32_t writeLen = (m_appLen/4) - m_wordOffset;
+    uint32_t writeLen = (m_appLen/sizeof(uint32_t)) - m_wordOffset;
     if (writeLen > 16) {
         m_writeLen = 16;
     }
@@ -233,14 +234,14 @@ void FspDfu::requestWrite()
     req.length = m_writeLen;
     req.wordOffset_lsb = m_wordOffset & 0xFF;
     req.wordOffset_msb = (m_wordOffset >>8) & 0xFF;
-    m_firmware->getAppData(req.data, m_wordOffset*4, m_writeLen*4);
+    m_firmware->getAppData(req.data, m_wordOffset*sizeof(uint32_t), m_writeLen*sizeof(uint32_t));
     
     shtp_send(m_pShtp, CHAN_BOOTLOADER_CONTROL, (uint8_t *)&req, sizeof(req));
 }
 
-DfuState_t FspDfu::handleModeResponse(uint8_t *payload, uint16_t len)
+DfuState_e FspDfu::handleModeResponse(uint8_t *payload, uint16_t len)
 {
-    DfuState_t nextState = m_state;
+    DfuState_e nextState = m_state;
     uint8_t opMode = payload[1];
     uint8_t opModeStatus = payload[2];
 
@@ -260,15 +261,15 @@ DfuState_t FspDfu::handleModeResponse(uint8_t *payload, uint16_t len)
     return nextState;
 }
 
-DfuState_t FspDfu::handleWriteResponse(uint8_t *payload, uint16_t len)
+DfuState_e FspDfu::handleWriteResponse(uint8_t *payload, uint16_t len)
 {
-    DfuState_t nextState = m_state;
+    DfuState_e nextState = m_state;
     uint8_t writeStatus = payload[1];
     uint16_t wordOffset = getU16(payload, 2);
 
     if (writeStatus == 0) {
         m_wordOffset += m_writeLen;
-        if (m_wordOffset*4 == m_appLen) {
+        if (m_wordOffset*sizeof(uint32_t) == m_appLen) {
             // Now we wait for final status update
             nextState = ST_WAIT_COMPLETION;
         }
@@ -297,9 +298,9 @@ void FspDfu::requestLaunch()
     shtp_send(m_pShtp, CHAN_BOOTLOADER_CONTROL, (uint8_t *)&req, sizeof(req));
 }
 
-DfuState_t FspDfu::handleFinalStatus(uint8_t *payload, uint16_t len)
+DfuState_e FspDfu::handleFinalStatus(uint8_t *payload, uint16_t len)
 {
-    DfuState_t nextState = m_state;
+    DfuState_e nextState = m_state;
 
     uint32_t status = getU32(payload, 4);
     uint32_t errCode = getU32(payload, 8);
@@ -319,9 +320,9 @@ DfuState_t FspDfu::handleFinalStatus(uint8_t *payload, uint16_t len)
     return nextState;
 }
 
-DfuState_t FspDfu::handleLaunchResp(uint8_t *payload, uint16_t len)
+DfuState_e FspDfu::handleLaunchResp(uint8_t *payload, uint16_t len)
 {
-    DfuState_t nextState = m_state;
+    DfuState_e nextState = m_state;
 
     uint8_t opMode = payload[1];
     uint8_t opModeStatus = payload[2];
@@ -339,7 +340,7 @@ DfuState_t FspDfu::handleLaunchResp(uint8_t *payload, uint16_t len)
     return nextState;
 }
 
-const DfuTransition_t FspDfu::dfuStateTransition[] = {
+const DfuTransition_s FspDfu::dfuStateTransition[] = {
     {ST_INIT, ID_STATUS_RESP, &FspDfu::handleInitStatus},
     {ST_SETTING_MODE, ID_OPMODE_RESP, &FspDfu::handleModeResponse},
     {ST_SENDING_DATA, ID_WRITE_RESP, &FspDfu::handleWriteResponse},
@@ -347,7 +348,7 @@ const DfuTransition_t FspDfu::dfuStateTransition[] = {
     {ST_LAUNCHING, ID_OPMODE_RESP, &FspDfu::handleLaunchResp},
 };
 
-const DfuTransition_t *FspDfu::findTransition(DfuState_t state, uint8_t reportId)
+const DfuTransition_s *FspDfu::findTransition(DfuState_e state, uint8_t reportId)
 {
     for (int n = 0; n < sizeof(dfuStateTransition)/sizeof(dfuStateTransition[0]); n++) {
         if ((dfuStateTransition[n].state == state) &&
@@ -358,7 +359,7 @@ const DfuTransition_t *FspDfu::findTransition(DfuState_t state, uint8_t reportId
     }
 
     // Didn't find a match
-    return 0;
+    return NULL;
 }
 
 // CHAN_BOOTLOADER_CONTROL handler
@@ -367,7 +368,7 @@ void FspDfu::bootloader_ctrl_hdlr(uint8_t *payload, uint16_t len, uint32_t times
     uint8_t reportId = payload[0];
 
     // Find a state machine table entry matching current state and report id.
-    const DfuTransition_t *pEntry = findTransition(m_state, reportId);
+    const DfuTransition_s *pEntry = findTransition(m_state, reportId);
 
     if (pEntry) {
         // Take the prescribed action for this transition and assign new state
@@ -404,12 +405,15 @@ bool FspDfu::run(sh2_Hal_t *pHal_, Firmware *firmware) {
     // Open firmware and validate it
     m_firmware = firmware;
     openFirmware();
-    if (m_status != SH2_OK) goto fin;
+    if (m_status != SH2_OK) {
+        goto fin;
+    }
     
     // Initialize SHTP layer
     m_pShtp = shtp_open(m_pHal);
     if (m_pShtp == 0) {
-        return false;
+        m_status = SH2_ERR;
+        goto fin;
     }
 
     // register channel handlers for DFU

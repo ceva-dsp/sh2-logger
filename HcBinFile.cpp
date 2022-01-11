@@ -181,7 +181,7 @@ int HcBinFile::close() {
     }
 
     // Clear metadata entries
-    for (MetadataKV_t* kv : m_metadata) {
+    for (MetadataKV_s *kv : m_metadata) {
         delete kv;
     }
     m_metadata.clear();
@@ -192,9 +192,11 @@ int HcBinFile::close() {
 }
 
 const char* HcBinFile::getMeta(const char* key) {
-    if (!m_open) return 0;
+    if (!m_open) {
+        return 0;
+    }
     
-    for (MetadataKV_t* kv : m_metadata) {
+    for (MetadataKV_s *kv : m_metadata) {
         if (kv->key == key) {
             // Found the requested key
             return kv->value.c_str();
@@ -206,21 +208,29 @@ const char* HcBinFile::getMeta(const char* key) {
 }
 
 uint32_t HcBinFile::getAppLen() {
-    if (!m_open) return SH2_ERR;
+    if (!m_open) {
+        return SH2_ERR;
+    }
     
     return m_appDataLen;
 }
 
 uint32_t HcBinFile::getPacketLen() {
-    if (!m_open) return SH2_ERR;
+    if (!m_open) {
+        return SH2_ERR;
+    }
 
     // No preferred packet length with this implementation.
     return 0;
 }
 
 int HcBinFile::getAppData(uint8_t* packet, uint32_t offset, uint32_t len) {
-    if (!m_open) return SH2_ERR;
-    if (offset+len > m_appDataLen) return SH2_ERR_BAD_PARAM;
+    if (!m_open) {
+        return SH2_ERR;
+    }
+    if (offset+len > m_appDataLen) {
+        return SH2_ERR_BAD_PARAM;
+    }
 
     for (uint32_t copied = 0; copied < len; copied++) {
         packet[copied] = m_appData[offset+copied];
@@ -262,7 +272,9 @@ int HcBinFile::readMetadata(FILE * infile, long int offset) {
     while (pos < offset) {
         bool ungot = false;
         int c = fgetc(infile);
-        if (c == EOF) return SH2_ERR_BAD_PARAM;
+        if (c == EOF) {
+            return SH2_ERR_BAD_PARAM;
+        }
 
         if (state == ParseState::KEY) {
             if (c == ':') {
@@ -284,7 +296,7 @@ int HcBinFile::readMetadata(FILE * infile, long int offset) {
                 state = ParseState::EOL;
 
                 // store key/value pair
-                MetadataKV_t *kv = new MetadataKV_t();
+                MetadataKV_s *kv = new MetadataKV_s();
                 kv->key = key;
                 kv->value = value;
                 m_metadata.push_back(kv);

@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 
-#ifndef CONSOLE_LOGGER_H
-#define CONSOLE_LOGGER_H
+#pragma once
 
 #include "Logger.h"
 
@@ -52,4 +51,3 @@ private:
     void WriteSensorReportHeader(sh2_SensorValue_t* pValue, double timestamp);
 };
 
-#endif // CONSOLE_LOGGER_H

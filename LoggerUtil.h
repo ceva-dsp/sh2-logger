@@ -127,6 +127,8 @@ namespace LoggerUtil {
         "Const variable size match failed");
 
     static const frsIdMap_s Sh2FrsRecords[] = {
+        // This is explicitly logged separately in LoggerApp, so we
+        // don't need it in this list.
         // { STATIC_CALIBRATION_AGM, "scd" },
         { NOMINAL_CALIBRATION, "nominal_scd" },
         { DYNAMIC_CALIBRATION, "dcd" },
@@ -166,16 +168,17 @@ namespace LoggerUtil {
         { ME_TIME_SOURCE_SELECT, "motion_engine_time_source_selection" },
         { UART_FORMAT, "uart_output_format_selection" },
         { GYRO_INTEGRATED_RV_CONFIG, "gyro_integrated_rotation_vector_configuration" },
-        { DR_IMU_CONFIG, "dr_imu_config"},
-        { DR_VEL_EST_CONFIG, "dr_vel_est_config"},
-        { DR_SYNC_CONFIG, "dr_sync_config"},
-        { DR_QUAL_CONFIG, "dr_qual_config"},
-        { DR_CAL_CONFIG, "dr_cal_config"},
-        { DR_LIGHT_REC_CONFIG, "dr_light_rec_config"},
-        { DR_FUSION_CONFIG, "dr_fusion_config"},
-        { DR_OF_CONFIG, "dr_optical_flow_config"},
-        { DR_WHEEL_CONFIG, "dr_wheel_config"},
-        { DR_CAL, "dr_calibration"},
+        { DR_OF_CONFIG, "dead_reckoning_optical_flow_sensor_configuration"},
+        { DR_WHEEL_CONFIG, "dead_reckoning_wheel_encoder_configuration"},
+        { DR_IMU_CONFIG, "dead_reckoning_imu_configuration"},
+        { DR_VEL_EST_CONFIG, "dead_reckoning_velocity_estimator_configuration"},
+        { DR_SYNC_CONFIG, "dead_reckoning_synchronizer_configuration"},
+        { DR_QUAL_CONFIG, "dead_reckoning_quality_detector_configuration"},
+        { DR_CAL_CONFIG, "dead_reckoning_calibration_configuration"},
+        { DR_FUSION_CONFIG, "dead_reckoning_fusion_configuration"},
+        { DR_LIGHT_REC_CONFIG, "dead_reckoning_light_recommendation_configuration"},
+        { DR_CAL, "dead_reckoning_dynamic_calibration"},
+        { DR_WHEEL_SELECT, "dead_reckoning_wheel_mode_selection"}
     };
 
     static const uint8_t NumSh2FrsRecords = sizeof(Sh2FrsRecords) / sizeof(frsIdMap_s);

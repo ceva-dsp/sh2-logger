@@ -62,7 +62,6 @@ static Logger* logger_;
 static State_e state_ = State_e::Idle;
 
 // Sensor Sample Timestamp
-static bool useSampleTime_ = false;
 static double firstSampleTime_us_ = 0;
 static double currSampleTime_us_ = 0;
 static double lastSampleTime_us_ = 0;
@@ -123,32 +122,10 @@ void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
     if (rc != SH2_OK) {
         return;
     }
-
-    if (useSampleTime_) {
-        switch (value.sensorId) {
-            case SH2_RAW_ACCELEROMETER:
-                currSampleTime_us_ = value.un.rawAccelerometer.timestamp * 1e-6;
-                lastSampleTime_us_ = currSampleTime_us_;
-                break;
-            case SH2_RAW_GYROSCOPE:
-                currSampleTime_us_ = value.un.rawGyroscope.timestamp * 1e-6;
-                lastSampleTime_us_ = currSampleTime_us_;
-                break;
-            case SH2_RAW_MAGNETOMETER:
-                currSampleTime_us_ = value.un.rawMagnetometer.timestamp * 1e-6;
-                lastSampleTime_us_ = currSampleTime_us_;
-                break;
-            case SH2_RAW_OPTICAL_FLOW:
-                currSampleTime_us_ = value.un.rawOptFlow.timestamp * 1e-6;
-                lastSampleTime_us_ = currSampleTime_us_;
-                break;
-            default:
-                currSampleTime_us_ = lastSampleTime_us_;
-                break;
-        }
-    } else {
-        currSampleTime_us_ = value.timestamp * 1e-6;
-    }
+    
+    //This is the delay-compensated timestamp (host's best estimate of
+    // measurement time)
+    currSampleTime_us_ = value.timestamp * 1e-6;
 
     if (firstSampleTime_us_ == 0) {
         firstSampleTime_us_ = currSampleTime_us_;
@@ -156,7 +133,7 @@ void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
     ++sensorEventsReceived_;
 
     // Log sensor data
-    logger_->logSensorValue(&value, currSampleTime_us_);
+    logger_->logSensorValue(&value, currSampleTime_us_, pEvent->delay_uS);
 }
 
 
@@ -285,10 +262,6 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
         // std::cout << " @ " << (1e6 / config.reportInterval_us) << "Hz";
         // std::cout << " (" << config.reportInterval_us << "us)\n";
         sh2_setSensorConfig(it->sensorId, &config);
-
-        if (appConfig->useRawSampleTime && IsRawSensor(it->sensorId)) {
-            useSampleTime_ = true;
-        }
     }
 
     // Initialization Process complete
@@ -358,18 +331,6 @@ void LoggerApp::GetSensorConfiguration(sh2_SensorId_t sensorId, sh2_SensorConfig
     memcpy(pConfig, LoggerUtil::SensorSpec[sensorId].config, sizeof(sh2_SensorConfig_t));
 }
 
-// -------------------------------------------------------------------------------------------------
-// LoggerApp::IsRawSensor
-// -------------------------------------------------------------------------------------------------
-bool LoggerApp::IsRawSensor(sh2_SensorId_t sensorId) {
-    if (sensorId == SH2_RAW_ACCELEROMETER || sensorId == SH2_RAW_GYROSCOPE ||
-        sensorId == SH2_RAW_MAGNETOMETER) {
-        return true;
-    }
-    else {
-        return false;
-    }
-}
 
 // -------------------------------------------------------------------------------------------------
 // LoggerApp::ReportProgress

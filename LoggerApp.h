@@ -64,7 +64,6 @@ public:
         bool clearOfCal = false;
         bool dcdAutoSave = false;
         bool orientationNed = true;
-        bool useRawSampleTime = false;
         sensorList_t * pSensorsToEnable = 0;
         int deviceNumber = 0;
         char deviceName[1024] = "";
@@ -90,7 +89,6 @@ private:
     // PRIVATE METHODS
     // ---------------------------------------------------------------------------------------------
     void GetSensorConfiguration(sh2_SensorId_t sensorId, sh2_SensorConfig_t* pConfig);
-    bool IsRawSensor(sh2_SensorId_t sensorId);
     void ReportProgress();
 
     int LogFrsRecord(uint16_t recordId, char const* name);

@@ -39,7 +39,7 @@ public:
 
     virtual void logProductIds(sh2_ProductIds_t ids);
     virtual void logFrsRecord(char const* name, uint32_t* buffer, uint16_t words);
-    virtual void logSensorValue(sh2_SensorValue_t* pValue, double currTime);
+    virtual void logSensorValue(sh2_SensorValue_t* pValue, double currTime, int64_t delay_uS);
 
 private:
     // ---------------------------------------------------------------------------------------------

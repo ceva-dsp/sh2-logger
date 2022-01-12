@@ -57,7 +57,7 @@ private:
 // =================================================================================================
 class DsfLogger : public Logger {
 public:
-    DsfLogger():posixOffset_(0){};
+    DsfLogger(){};
     virtual ~DsfLogger(){};
 
     virtual bool init(char const* filePath, bool ned);
@@ -68,20 +68,19 @@ public:
 
     virtual void logProductIds(sh2_ProductIds_t ids);
     virtual void logFrsRecord(char const* name, uint32_t* buffer, uint16_t words);
-    virtual void logSensorValue(sh2_SensorValue_t* pValue, double timestamp);
+    virtual void logSensorValue(sh2_SensorValue_t* pValue, double timestamp, int64_t delay_uS);
 
 private:
     // ---------------------------------------------------------------------------------------------
     // VARIABLES
     // ---------------------------------------------------------------------------------------------
     std::ofstream outFile_;
-    double posixOffset_;
 
     // ---------------------------------------------------------------------------------------------
     // PRIVATE METHODS
     // ---------------------------------------------------------------------------------------------
     void WriteChannelDefinition(uint8_t sensorId, bool orientation = true);
-    void WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExtender* extender, double timestamp);
+    void WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExtender* extender, double timestamp, int64_t delay_uS);
 };
 
 #endif // DSF_LOGGER_H

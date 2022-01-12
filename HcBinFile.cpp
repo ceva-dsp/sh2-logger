@@ -87,7 +87,9 @@ int HcBinFile::open()
     
     // read Id
     status = read32be(infile, &id);
-    if (status != SH2_OK) goto cleanup;
+    if (status != SH2_OK) {
+        goto cleanup;
+    }
     if (id != HCBIN_ID) {
         // Error: file isn't an HcBin file
         status = SH2_ERR_BAD_PARAM;
@@ -96,11 +98,15 @@ int HcBinFile::open()
 
     // Read File size
     status = read32be(infile, &sz);
-    if (status != SH2_OK) goto cleanup;
+    if (status != SH2_OK) {
+        goto cleanup;
+    }
 
     // Read file format version
     status = read32be(infile, &ff_ver);
-    if (status != SH2_OK) goto cleanup;
+    if (status != SH2_OK) {
+        goto cleanup;
+    }
     if (ff_ver != HCBIN_FF_VER) {
         // This program doesn't understand this file format version
         status = SH2_ERR_BAD_PARAM;
@@ -109,7 +115,9 @@ int HcBinFile::open()
 
     // Read payload offset
     status = read32be(infile, &offset);
-    if (status != SH2_OK) goto cleanup;
+    if (status != SH2_OK) {
+        goto cleanup;
+    }
 
     // Read Metadata entries
     status = readMetadata(infile, (long int)offset);
@@ -120,8 +128,9 @@ int HcBinFile::open()
 
     // get current file position
     pos = ftell(infile);
-    if (pos < 0) goto cleanup;
-    if (pos > (long int)offset) goto cleanup;
+    if ((pos < 0) || (pos > (long int)offset)) {
+        goto cleanup;
+    }
 
     // Skip anything else between metadata and offset
     // (But include it in the CRC32)
@@ -129,7 +138,9 @@ int HcBinFile::open()
 
         int c = fgetc(infile);
         updateCrc32(c);
-        if (c == EOF) goto cleanup;
+        if (c == EOF) {
+            goto cleanup;
+        }
 
         pos += 1;
     }
@@ -145,7 +156,9 @@ int HcBinFile::open()
     // Read CRC
     computed_crc = ~m_crc32;
     status = read32be(infile, &stored_crc);
-    if (status != SH2_OK) goto cleanup;
+        if (status != SH2_OK) {
+            goto cleanup;
+        }
     if (stored_crc != computed_crc) {
         // CRC error on file contents
         status = SH2_ERR_BAD_PARAM;
@@ -193,7 +206,7 @@ int HcBinFile::close() {
 
 const char* HcBinFile::getMeta(const char* key) {
     if (!m_open) {
-        return 0;
+        return NULL;
     }
     
     for (MetadataKV_s *kv : m_metadata) {
@@ -204,7 +217,7 @@ const char* HcBinFile::getMeta(const char* key) {
     }
 
     // Not found.
-    return 0;
+    return NULL;
 }
 
 uint32_t HcBinFile::getAppLen() {
@@ -357,8 +370,9 @@ void HcBinFile::updateCrc32(uint8_t c)
     for (int n = 0; n < 8; n++) {
         uint32_t b = (c ^ m_crc32) & 1;
         m_crc32 >>= 1;
-        if (b)
+        if (b) {
             m_crc32 = m_crc32 ^ 0xEDB88320;
+        }
         c >>= 1;
     }
 }

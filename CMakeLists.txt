@@ -12,9 +12,9 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/tclap/include")
 
 
 if(WIN32)
-set(PLATFORM_CODE Win)
+  set(BNO_DFU_HAL bno_dfu_hal_Win.c)
 else()
-set(PLATFORM_CODE Linux)
+  set(BNO_DFU_HAL bno_dfu_hal_Linux.c)
 endif()
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
@@ -30,8 +30,8 @@ add_executable(sh2_logger
 	ConsoleLogger.cpp
     FspDfu.cpp
     BnoDfu.cpp
-    hal/bno_dfu_hal_${PLATFORM_CODE}.c
     hal/ftdi_hal.c
+    hal/${BNO_DFU_HAL}
     HcBinFile.cpp
     sh2/sh2.c
     sh2/sh2_SensorValue.c

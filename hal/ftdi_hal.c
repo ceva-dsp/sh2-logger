@@ -68,7 +68,6 @@ struct ftdi_hal_s {
     sh2_Hal_t hal_fns; // must be first so (sh2_Hal_t *) can be cast as (ftdi_hal_t *)
 
     bool dfu;
-    speed_t baud;
     bool is_open;
 
     uint16_t lastBsn;
@@ -81,11 +80,13 @@ struct ftdi_hal_s {
 
     const char* device_filename;
 #ifdef _WIN32
+    DWORD baud;
     bool latencySet;
     HANDLE ftHandle;
     HANDLE commEvent;
     bool anyRx;
 #else
+    speed_t baud;
     int fd;
 #endif
 };
@@ -113,7 +114,7 @@ static void setBootN(ftdi_hal_t* pHal, bool state) {
 }
 
 // Get time in microseconds as 64-bit quantity
-static uint32_t readTime_us() {
+static uint64_t readTime_us() {
     static uint64_t freq = 0;
     uint64_t counterTime;
 
@@ -130,18 +131,27 @@ static bool read_char(ftdi_hal_t* pHal, uint8_t* c) {
     int status;
     int bytesRead;
 
-    status = FT_Read(pHal->ftHandle, c, 1, &bytesRead);
-    if (status = FT_OK) {
-        // Reset LATENCY_TIMER as soon as data is received.
-        if (!pHal->anyRx) {
-            pHal->anyRx = true;
-            if (!pHal->latencySet) {
-                pHal->latencySet = true;
-                FT_SetLatencyTimer(pHal->ftHandle, LATENCY_TIMER);
-            }
-        }
+    DWORD eventDWord;
+    DWORD txBytes;
+    DWORD rxBytes;
 
-        return true;
+    FT_GetStatus(pHal->ftHandle, &rxBytes, &txBytes, &eventDWord);
+
+    if (rxBytes > 0) {
+        status = FT_Read(pHal->ftHandle, c, 1, &bytesRead);
+        if ((status == FT_OK) && (bytesRead > 0)) {
+            // Reset LATENCY_TIMER as soon as data is received.
+            if (!pHal->anyRx) {
+                pHal->anyRx = true;
+                if (!pHal->latencySet) {
+                    pHal->latencySet = true;
+                    FT_SetLatencyTimer(pHal->ftHandle, LATENCY_TIMER);
+                }
+            }
+            return true;
+        } else {
+            return false;
+        }
     } else {
         return false;
     }
@@ -577,12 +587,13 @@ static int ftdi_hal_write(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len) {
             // transmit c.
 #ifdef _WIN32
             // Windows-specific write to serial port
-            FT_STATUS status = FT_Write(pHal->ftHandle, writeBuf + n, 1, &written);
+            DWORD bytes_written = 0;
+            FT_STATUS status = FT_Write(pHal->ftHandle, writeBuf + written, 1, &bytes_written);
             if (status != FT_OK) {
                 // fail with I/O error
                 return SH2_ERR_IO;
             }
-            written += 1;
+            written += bytes_written;
 #else
             // Non-Windows write to serial port
             int status = write(pHal->fd, &writeBuf[written], 1);
@@ -604,12 +615,13 @@ static int ftdi_hal_write(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len) {
         pHal->lastBsqTime_us = now;
         while (written < sizeof(BSQ)) {
 #ifdef _WIN32
-            FT_STATUS status = FT_Write(pHal->ftHandle, (void*)(BSQ + n), 1, &written);
+            DWORD bytes_written = 0;
+            FT_STATUS status = FT_Write(pHal->ftHandle, (void*)(BSQ + written), 1, &bytes_written);
             if (status != FT_OK) {
                 // fail with I/O error
                 return SH2_ERR_IO;
             }
-            written += 1;
+            written += bytes_written;
 #else
             int status = write(pHal->fd, &BSQ[written], 1);
             if (status > 0) {

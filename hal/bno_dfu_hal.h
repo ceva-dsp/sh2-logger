@@ -19,8 +19,4 @@
 
 #include "sh2_hal.h"
 
-#ifdef _WIN32
-sh2_Hal_t* bno_dfu_hal_init(unsigned device_num);
-#else
 sh2_Hal_t* bno_dfu_hal_init(const char* device_filename);
-#endif

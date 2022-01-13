@@ -25,6 +25,8 @@
  *
  */
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "HcBinFile.h"
 
 #include <stdio.h>
@@ -32,7 +34,6 @@
 extern "C" {
 #include "sh2/sh2_err.h"
 };
-
 
 #define HCBIN_ID (0x6572d028)
 #define HCBIN_FF_VER (4)

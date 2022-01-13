@@ -126,7 +126,7 @@ namespace LoggerUtil {
     static_assert((sizeof(SensorSpec) / sizeof(sensorSpec_s)) == (SH2_MAX_SENSOR_ID + 1),
         "Const variable size match failed");
 
-    static const frsIdMap_s Bno080FrsRecords[] = {
+    static const frsIdMap_s Sh2FrsRecords[] = {
         // { STATIC_CALIBRATION_AGM, "scd" },
         { NOMINAL_CALIBRATION, "nominal_scd" },
         { DYNAMIC_CALIBRATION, "dcd" },
@@ -166,9 +166,19 @@ namespace LoggerUtil {
         { ME_TIME_SOURCE_SELECT, "motion_engine_time_source_selection" },
         { UART_FORMAT, "uart_output_format_selection" },
         { GYRO_INTEGRATED_RV_CONFIG, "gyro_integrated_rotation_vector_configuration" },
+        { DR_IMU_CONFIG, "dr_imu_config"},
+        { DR_VEL_EST_CONFIG, "dr_vel_est_config"},
+        { DR_SYNC_CONFIG, "dr_sync_config"},
+        { DR_QUAL_CONFIG, "dr_qual_config"},
+        { DR_CAL_CONFIG, "dr_cal_config"},
+        { DR_LIGHT_REC_CONFIG, "dr_light_rec_config"},
+        { DR_FUSION_CONFIG, "dr_fusion_config"},
+        { DR_OF_CONFIG, "dr_optical_flow_config"},
+        { DR_WHEEL_CONFIG, "dr_wheel_config"},
+        { DR_CAL, "dr_calibration"},
     };
 
-    static const uint8_t NumBno080FrsRecords = sizeof(Bno080FrsRecords) / sizeof(frsIdMap_s);
+    static const uint8_t NumSh2FrsRecords = sizeof(Sh2FrsRecords) / sizeof(frsIdMap_s);
 
 
     // ---------------------------------------------------------------------------------------------

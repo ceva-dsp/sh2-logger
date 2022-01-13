@@ -413,8 +413,8 @@ void LoggerApp::LogAllFrsRecords() {
     }
 
     const LoggerUtil::frsIdMap_s* pFrs;
-    for (int i = 0; i < LoggerUtil::NumBno080FrsRecords; i++) {
-        pFrs = &LoggerUtil::Bno080FrsRecords[i];
+    for (int i = 0; i < LoggerUtil::NumSh2FrsRecords; i++) {
+        pFrs = &LoggerUtil::Sh2FrsRecords[i];
         LogFrsRecord(pFrs->recordId, pFrs->name);
     }
 }

@@ -378,7 +378,7 @@ static int ftdi_hal_open(sh2_Hal_t* self) {
 
     // Open device file
     if ((pHal->fd = open(pHal->device_filename, O_RDWR | O_NOCTTY | O_NONBLOCK)) == -1) {
-        uart_errno_printf("uart_connect: OPEN %s:", pHal->device_filename);
+        uart_errno_printf("uart_connect: OPEN '%s':", pHal->device_filename);
         pHal->is_open = false;
         return SH2_ERR_IO;
     }
@@ -710,7 +710,7 @@ sh2_Hal_t* ftdi_hal_init(const char* device_filename) {
 sh2_Hal_t* ftdi_hal_dfu_init(const char* device_filename) {
 
     // Save reference to device file name, etc.
-    ftdi_hal.device_filename = device_filename;
+    dfu_hal.device_filename = device_filename;
     dfu_hal.dfu = true;
     dfu_hal.baud = DEFAULT_BAUD_RATE;
     dfu_hal.is_open = false;

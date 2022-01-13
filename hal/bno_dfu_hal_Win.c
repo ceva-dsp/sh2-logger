@@ -36,9 +36,9 @@
 struct bno_dfu_hal_s {
     sh2_Hal_t hal_fns; // must be first so (sh2_Hal_t *) can be cast as (bno_dfu_hal_t *)
 
+    const char * device_name;
     bool is_open;
     bool latencySet;
-    unsigned deviceIdx;
     HANDLE ftHandle;
     HANDLE commEvent;
 };
@@ -107,8 +107,13 @@ static int dfu_hal_open(sh2_Hal_t* self) {
     // Mark as open
     pHal->is_open = true;
 
+    // Interpret device name as an integer FTDI port number.
+    // If not a valid integer, atoi returns 0 and we will try
+    // to open FTDI port 0, which is usually correct.
+    unsigned deviceIdx = atoi(pHal->device_name);
+
     FT_STATUS status;
-    status = FT_Open(pHal->deviceIdx, &pHal->ftHandle);
+    status = FT_Open(deviceIdx, &pHal->ftHandle);
     if (status != FT_OK) {
         fprintf(stderr, "Unable to find an FTDI COM port\n");
         return -1;
@@ -260,16 +265,16 @@ static bno_dfu_hal_t dfu_hal = {
                         .getTimeUs = dfu_hal_getTimeUs,
                 },
 
+        .device_name = "",
         .is_open = false,
         .latencySet = false,
-        .deviceIdx = 0,
         .ftHandle = 0,
         .commEvent = 0,
 };
 
-sh2_Hal_t* bno_dfu_hal_init(unsigned deviceIdx) {
+sh2_Hal_t* bno_dfu_hal_init(const char *device_name) {
     // Save reference to device file name, etc.
-    dfu_hal.deviceIdx = deviceIdx;
+    dfu_hal.device_name = device_name;
 
     dfu_hal.is_open = false;
     dfu_hal.latencySet = false;

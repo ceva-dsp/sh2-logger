@@ -27,7 +27,6 @@ add_executable(sh2_logger
     sh2_logger.cpp
     LoggerApp.cpp
     DsfLogger.cpp
-	ConsoleLogger.cpp
     FspDfu.cpp
     BnoDfu.cpp
     hal/ftdi_hal.c

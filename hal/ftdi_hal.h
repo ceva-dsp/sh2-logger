@@ -19,10 +19,5 @@
 
 #include "sh2_hal.h"
 
-#ifdef _WIN32
-sh2_Hal_t* ftdi_hal_init(unsigned deviceIdx);
-sh2_Hal_t* ftdi_hal_dfu_init(unsigned deviceIdx);
-#else
 sh2_Hal_t* ftdi_hal_init(const char* device_filename);
 sh2_Hal_t* ftdi_hal_dfu_init(const char* device_filename);
-#endif

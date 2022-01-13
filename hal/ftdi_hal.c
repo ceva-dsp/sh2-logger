@@ -79,28 +79,79 @@ struct ftdi_hal_s {
     RxState_t rxState;
     uint32_t lastBsqTime_us;
 
+    const char* device_filename;
 #ifdef _WIN32
     bool latencySet;
-    unsigned deviceIdx;
     HANDLE ftHandle;
     HANDLE commEvent;
     bool anyRx;
 #else
     int fd;
-    const char* device_filename;
 #endif
 };
 typedef struct ftdi_hal_s ftdi_hal_t;
 
+#ifdef _WIN32
+// Windows-specific versions of these functions
+
 // Set RESETN to state.
 static void setResetN(ftdi_hal_t* pHal, bool state) {
-#ifdef _WIN32
     if (state) {
         FT_ClrDtr(pHal->ftHandle);
     } else {
         FT_SetDtr(pHal->ftHandle);
     }
-#else
+}
+
+// Set BOOTN to state.
+static void setBootN(ftdi_hal_t* pHal, bool state) {
+    if (state) {
+        FT_ClrRts(pHal->ftHandle);
+    } else {
+        FT_SetRts(pHal->ftHandle);
+    }
+}
+
+// Get time in microseconds as 64-bit quantity
+static uint32_t readTime_us() {
+    static uint64_t freq = 0;
+    uint64_t counterTime;
+
+    QueryPerformanceCounter((LARGE_INTEGER*)&counterTime);
+
+    if (freq == 0) {
+        QueryPerformanceFrequency((LARGE_INTEGER*)&freq);
+    }
+
+    return (uint64_t)(counterTime * 1000000 / freq);
+}
+
+static bool read_char(ftdi_hal_t* pHal, uint8_t* c) {
+    int status;
+    int bytesRead;
+
+    status = FT_Read(pHal->ftHandle, c, 1, &bytesRead);
+    if (status = FT_OK) {
+        // Reset LATENCY_TIMER as soon as data is received.
+        if (!pHal->anyRx) {
+            pHal->anyRx = true;
+            if (!pHal->latencySet) {
+                pHal->latencySet = true;
+                FT_SetLatencyTimer(pHal->ftHandle, LATENCY_TIMER);
+            }
+        }
+
+        return true;
+    } else {
+        return false;
+    }
+}
+
+#else // ifdef _WIN32
+// Non-Windows versions of these functions
+
+// Set RESETN to state.
+static void setResetN(ftdi_hal_t* pHal, bool state) {
     // RESETN connected to DTR
     int resetSignal = TIOCM_DTR;
     int status = 0;
@@ -114,18 +165,10 @@ static void setResetN(ftdi_hal_t* pHal, bool state) {
         status |= resetSignal;
     }
     ioctl(pHal->fd, TIOCMSET, &status);
-#endif
 }
 
 // Set BOOTN to state.
 static void setBootN(ftdi_hal_t* pHal, bool state) {
-#ifdef _WIN32
-    if (state) {
-        FT_ClrRts(pHal->ftHandle);
-    } else {
-        FT_SetRts(pHal->ftHandle);
-    }
-#else
     // BOOTN connected to RTS
     int bootnSignal = TIOCM_RTS;
 
@@ -140,28 +183,26 @@ static void setBootN(ftdi_hal_t* pHal, bool state) {
         status |= bootnSignal;
     }
     ioctl(pHal->fd, TIOCMSET, &status);
-#endif
 }
+
+// Get time in microseconds as 64-bit quantity
+static uint64_t readTime_us() {
+    struct timespec tp;
+    clock_gettime(CLOCK_MONOTONIC, &tp);
+    return ((uint32_t)tp.tv_sec * 1000000) + ((uint32_t)tp.tv_nsec / 1000.0);
+}
+
+static bool read_char(ftdi_hal_t* pHal, uint8_t* c) {
+    int status;
+    status = read(pHal->fd, c, 1);
+    return status > 0;
+}
+
+#endif // ifdef _WIN32
 
 static uint32_t time32_now_us() {
     static uint64_t initialTimeUs = 0;
-    uint64_t t_us = 0;
-
-#ifdef WIN32
-    static uint64_t freq = 0;
-    uint64_t counterTime;
-    QueryPerformanceCounter((LARGE_INTEGER*)&counterTime);
-
-    if (freq == 0) {
-        QueryPerformanceFrequency((LARGE_INTEGER*)&freq);
-    }
-
-    t_us = (uint64_t)(counterTime * 1000000 / freq);
-#else
-    struct timespec tp;
-    clock_gettime(CLOCK_MONOTONIC, &tp);
-    t_us = ((uint32_t)tp.tv_sec * 1000000) + ((uint32_t)tp.tv_nsec / 1000.0);
-#endif
+    uint64_t t_us = readTime_us();
 
     if (initialTimeUs == 0) {
         initialTimeUs = t_us;
@@ -268,8 +309,17 @@ static int ftdi_hal_open(sh2_Hal_t* self) {
     pHal->rxFrameStartTime_us = time32_now_us();
 
 #ifdef _WIN32
+    // Windows-specific serial port setup
+
+    // Convert "filename" param to the FTDI device number.
+    // Note: If a non-numeric string is provided as the filename,
+    // atoi will return 0 and the code will attempt to open FTDI
+    // device 0.  (Which is the appropriate thing, anyway, 99%
+    // of the time.)
+    unsigned deviceIdx = atoi(pHal->device_filename);
+
     FT_STATUS status;
-    status = FT_Open(pHal->deviceIdx, &pHal->ftHandle);
+    status = FT_Open(deviceIdx, &pHal->ftHandle);
     if (status != FT_OK) {
         fprintf(stderr, "Unable to find an FTDI COM port\n");
         return SH2_ERR_BAD_PARAM;
@@ -310,7 +360,9 @@ static int ftdi_hal_open(sh2_Hal_t* self) {
 
     pHal->commEvent = CreateEvent(NULL, false, false, "");
     FT_SetEventNotification(pHal->ftHandle, FT_EVENT_RXCHAR, pHal->commEvent);
-#else
+
+#else  // ifdef _WIN32
+    // Non-Windows-specific serial port setup
 
     struct termios tty;
 
@@ -356,7 +408,7 @@ static int ftdi_hal_open(sh2_Hal_t* self) {
 
     fsync(pHal->fd);
     tcflush(pHal->fd, TCIOFLUSH);
-#endif
+#endif // ifdef _WIN32
 
     // Reset into bootloader
     setResetN(pHal, false); // Assert reset
@@ -397,38 +449,11 @@ static void ftdi_hal_close(sh2_Hal_t* self) {
     pHal->is_open = false;
 
 #ifdef _WIN32
-    // Close descriptor
+    // Windows-specific Close serial port
     FT_Close(pHal->ftHandle);
 #else
-    // Close descriptor
+    // Non-Windows close serial port
     close(pHal->fd);
-#endif
-}
-
-static bool read_char(ftdi_hal_t* pHal, uint8_t* c) {
-#ifdef _WIN32
-    int status;
-    int bytesRead;
-
-    status = FT_Read(pHal->ftHandle, c, 1, &bytesRead);
-    if (status = FT_OK) {
-        // Reset LATENCY_TIMER as soon as data is received.
-        if (!pHal->anyRx) {
-            pHal->anyRx = true;
-            if (!pHal->latencySet) {
-                pHal->latencySet = true;
-                FT_SetLatencyTimer(pHal->ftHandle, LATENCY_TIMER);
-            }
-        }
-
-        return true;
-    } else {
-        return false;
-    }
-#else
-    int status;
-    status = read(pHal->fd, c, 1);
-    return status > 0;
 #endif
 }
 
@@ -551,12 +576,15 @@ static int ftdi_hal_write(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len) {
         while (written < encodedLen) {
             // transmit c.
 #ifdef _WIN32
+            // Windows-specific write to serial port
             FT_STATUS status = FT_Write(pHal->ftHandle, writeBuf + n, 1, &written);
             if (status != FT_OK) {
                 // fail with I/O error
                 return SH2_ERR_IO;
             }
+            written += 1;
 #else
+            // Non-Windows write to serial port
             int status = write(pHal->fd, &writeBuf[written], 1);
             if (status > 0) {
                 written += 1;
@@ -618,14 +646,13 @@ static ftdi_hal_t ftdi_hal = {
         .dfu = false,
         .baud = DEFAULT_BAUD_RATE,
         .is_open = false,
+        .device_filename = "",
 #ifdef _WIN32
         .latencySet = false,
-        .deviceIdx = 0,
         .ftHandle = 0,
         .commEvent = 0,
 #else
         .fd = 0,
-        .device_filename = "",
 #endif
 };
 
@@ -643,47 +670,22 @@ static ftdi_hal_t dfu_hal = {
         .dfu = true,
         .baud = DEFAULT_BAUD_RATE,
         .is_open = false,
+        .device_filename = "",
 #ifdef _WIN32
         .latencySet = false,
-        .deviceIdx = 0,
         .ftHandle = 0,
         .commEvent = 0,
 #else
         .fd = 0,
-        .device_filename = "",
 #endif
 };
 
 // ---------------------------------------------------------
 // Public functions
 
-#ifdef _WIN32
-sh2_Hal_t* ftdi_hal_init(unsigned deviceIdx) {
-    // Save reference to device file name, etc.
-    ftdi_hal.deviceIdx = deviceIdx;
-    ftdi_hal.dfu = false;
-    ftdi_hal.baud = DEFAULT_BAUD_RATE;
-    ftdi_hal.is_open = false;
-
-    // give caller the list of access functions.
-    return &(ftdi_hal.hal_fns);
-}
-
-sh2_Hal_t* ftdi_hal_dfu_init(unsigned deviceIdx) {
-    // Save reference to device file name, etc.
-    dfu_hal.deviceIdx = deviceIdx;
-    dfu_hal.dfu = true;
-    dfu_hal.baud = DEFAULT_BAUD_RATE;
-    dfu_hal.is_open = false;
-
-    // give caller the list of access functions.
-    return &(dfu_hal.hal_fns);
-}
-#else
 sh2_Hal_t* ftdi_hal_init(const char* device_filename) {
 
     // Save reference to device file name, etc.
-    ftdi_hal.fd = 0;
     ftdi_hal.device_filename = device_filename;
     ftdi_hal.dfu = false;
     ftdi_hal.baud = DEFAULT_BAUD_RATE;
@@ -694,9 +696,9 @@ sh2_Hal_t* ftdi_hal_init(const char* device_filename) {
 }
 
 sh2_Hal_t* ftdi_hal_dfu_init(const char* device_filename) {
+
     // Save reference to device file name, etc.
-    dfu_hal.fd = 0;
-    dfu_hal.device_filename = device_filename;
+    ftdi_hal.device_filename = device_filename;
     dfu_hal.dfu = true;
     dfu_hal.baud = DEFAULT_BAUD_RATE;
     dfu_hal.is_open = false;
@@ -704,4 +706,3 @@ sh2_Hal_t* ftdi_hal_dfu_init(const char* device_filename) {
     // give caller the list of access functions.
     return &(dfu_hal.hal_fns);
 }
-#endif

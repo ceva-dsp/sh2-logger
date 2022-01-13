@@ -28,21 +28,17 @@
 #include "tclap/CmdLine.h"
 
 #include "DsfLogger.h"
-#include "ConsoleLogger.h"
 #include "LoggerApp.h"
 #include "LoggerUtil.h"
 #include "FspDfu.h"
 #include "BnoDfu.h"
+#include "HcBinFile.h"
 
 #ifdef _WIN32
 #include <Windows.h>
-#endif
-
-#ifndef _WIN32
+#else
 #include "signal.h"
 #endif
-
-#include "HcBinFile.h"
 
 extern "C" {
 #include "bno_dfu_hal.h"
@@ -98,11 +94,7 @@ class Sh2Logger {
     std::string m_inFilename;
     
     bool m_deviceArgSet;
-#ifdef _WIN32
-    unsigned m_deviceArg;
-#else
     std::string m_deviceArg;
-#endif
 
     bool m_clearDcd;
     bool m_clearOfCal;
@@ -132,18 +124,11 @@ void Sh2Logger::parseArgs(int argc, const char *argv[]) {
                                                 false, "", "filename");
     cmd.add(outFilenameArg);
 
-#ifdef _WIN32    
-    // --device device_number
-    TCLAP::ValueArg<unsigned> deviceArg("d", "device", "FTDI device number (0 if only one FTDI UART<->USB adapter is connected.)",
-                                           false, 1, "device-num");
-    cmd.add(deviceArg);
-#else
     // --device device_name
     TCLAP::ValueArg<std::string> deviceArg("d", "device", 
-                                           "Serial port device name",
+                                           "Serial port device (For Windows, FTDI device number, usually 0.)",
                                            false, "", "device-name");
     cmd.add(deviceArg);
-#endif
 
     // --clear-dcd
     // clears DCD at start of session.
@@ -274,9 +259,6 @@ int Sh2Logger::do_logging() {
         return -1;
     }
 
-    /// ConsoleLogger consoleLogger;
-    /// Logger* logger;
-
     // appConfig holds the requested configuration for this session, as read from
     // the input .JSON file.
     LoggerApp::appConfig_s appConfig;
@@ -323,12 +305,7 @@ int Sh2Logger::do_logging() {
 
     // Initialze FTDI HAL
     int status;
-#ifdef _WIN32
-    // TODO-DW : Harmonize these
-    sh2_Hal_t *pHal = ftdi_hal_init(m_deviceArg);
-#else
     sh2_Hal_t *pHal = ftdi_hal_init(m_deviceArg.c_str());
-#endif
 
     if (pHal == 0) {
         std::cerr << "ERROR: Initialize FTDI HAL failed!\n";
@@ -409,11 +386,7 @@ int Sh2Logger::do_dfu_bno() {
         return -1;
     }
     
-#ifdef _WIN32
-    sh2_Hal_t *pHal = bno_dfu_hal_init(m_deviceArg);
-#else
     sh2_Hal_t *pHal = bno_dfu_hal_init(m_deviceArg.c_str());
-#endif
     
     if (pHal == 0) {
         std::cerr << "ERROR: Could not initialize DFU HAL.\n";
@@ -453,11 +426,7 @@ int Sh2Logger::do_dfu_fsp() {
         return -1;
     }
 
-#ifdef _WIN32
-    sh2_Hal_t *pHal = ftdi_hal_dfu_init(m_deviceArg);
-#else
     sh2_Hal_t *pHal = ftdi_hal_dfu_init(m_deviceArg.c_str());
-#endif
     
     if (pHal == 0) {
         std::cerr << "ERROR: Could not initialize DFU HAL.\n";

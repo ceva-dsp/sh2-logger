@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-21 CEVA, Inc.
+ * Copyright 2021 CEVA, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License and 
@@ -15,11 +15,26 @@
  * limitations under the License.
  */
 
-#ifndef FIRMWARE_H
-#define FIRMWARE_H
+/**
+ * @file Firmware.h
+ * @author David Wheeler
+ * @date 7 December 2021
+ * @brief API Definition for Firmware objects (Hillcrest HcBin Files).
+ *
+ * This interface definition is an abstraction of a firmware image in HcBin format.
+ *
+ */
 
-#include "HcBin.h"
+#pragma once
 
-extern const HcBin_t firmware;
+#include <stdint.h>
 
-#endif
+class Firmware {
+  public:
+    virtual int open() = 0;
+    virtual int close() = 0;
+    virtual const char * getMeta(const char *key) = 0;
+    virtual uint32_t getAppLen() = 0;
+    virtual uint32_t getPacketLen() = 0;
+    virtual int getAppData(uint8_t *packet, uint32_t offset, uint32_t len) = 0;
+};

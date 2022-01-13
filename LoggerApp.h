@@ -15,11 +15,13 @@
  * limitations under the License.
  */
 
-#ifndef LOGGER_APP_H
-#define LOGGER_APP_H
+#pragma once
 
 #include <list>
 #include <stdint.h>
+extern "C" {
+    #include "sh2_hal.h"
+}
 
 // =================================================================================================
 // DEFINES AND MACROS
@@ -29,9 +31,7 @@
 // =================================================================================================
 // DATA TYPES
 // =================================================================================================
-class TimerSrv;
 class Logger;
-class FtdiHal;
 
 // =================================================================================================
 // CLASS DEFINITON - LoggerApp
@@ -47,10 +47,11 @@ public:
         sh2_SensorId_t sensorId;
         uint32_t reportInterval_us;
         uint32_t sensorSpecific;
+        uint32_t sniffEnabled;
 
         bool operator<(SensorFeatureSet_s const &other) { return sensorId < other.sensorId; }
         bool operator==(SensorFeatureSet_s const &other) { return sensorId == other.sensorId; }
-        SensorFeatureSet_s():reportInterval_us(0),sensorSpecific(0){}
+        SensorFeatureSet_s():reportInterval_us(0),sensorSpecific(0),sniffEnabled(0){}
     };
     typedef std::list<SensorFeatureSet_s> sensorList_t;
 
@@ -59,6 +60,7 @@ public:
         bool dfuFsp = false;
         uint8_t calEnableMask = 0x0;
         bool clearDcd = false;
+        bool clearOfCal = false;
         bool dcdAutoSave = false;
         bool orientationNed = true;
         bool useRawSampleTime = false;
@@ -70,7 +72,7 @@ public:
     // ---------------------------------------------------------------------------------------------
     // PUBLIC METHODS
     // ---------------------------------------------------------------------------------------------
-    int init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, Logger* logger);
+    int init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger);
 
     int service();
 
@@ -86,7 +88,6 @@ private:
     // ---------------------------------------------------------------------------------------------
     // PRIVATE METHODS
     // ---------------------------------------------------------------------------------------------
-    bool WaitForResetComplete(int loops);
     void GetSensorConfiguration(sh2_SensorId_t sensorId, sh2_SensorConfig_t* pConfig);
     bool IsRawSensor(sh2_SensorId_t sensorId);
     void ReportProgress();
@@ -94,5 +95,3 @@ private:
     int LogFrsRecord(uint16_t recordId, char const* name);
     void LogAllFrsRecords();
 };
-
-#endif // LOGGER_APP_H

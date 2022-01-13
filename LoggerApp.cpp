@@ -24,8 +24,6 @@ extern "C" {
 #include "LoggerApp.h"
 #include "LoggerUtil.h"
 #include "Logger.h"
-#include "FtdiHal.h"
-#include "TimerService.h"
 
 #include "math.h"
 #include <string.h>
@@ -55,21 +53,9 @@ enum class State_e {
 // =================================================================================================
 
 // =================================================================================================
-// LOCAL FUNCTION PROTOTYPES
-// =================================================================================================
-static int Sh2HalOpen(sh2_Hal_t* self);
-static void Sh2HalClose(sh2_Hal_t* self);
-static int Sh2HalRead(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len, uint32_t* t_us);
-static int Sh2HalWrite(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len);
-static uint32_t Sh2HalGetTimeUs(sh2_Hal_t* self);
-
-// =================================================================================================
 // LOCAL VARIABLES
 // =================================================================================================
-static TimerSrv* timer_;
 static Logger* logger_;
-static FtdiHal* ftdiHal_;
-
 static State_e state_ = State_e::Idle;
 
 // Sensor Sample Timestamp
@@ -85,13 +71,8 @@ static uint64_t shtpErrors_ = 0;
 // =================================================================================================
 // CONST LOCAL VARIABLES
 // =================================================================================================
-static sh2_Hal_t sh2Hal_ = {
-	Sh2HalOpen,
-	Sh2HalClose,
-	Sh2HalRead,
-	Sh2HalWrite,
-	Sh2HalGetTimeUs,
-};
+
+static sh2_Hal_t* sh2Hal_ = 0;
 
 
 // =================================================================================================
@@ -182,40 +163,23 @@ void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
 // -------------------------------------------------------------------------------------------------
 // LoggerApp::init
 // -------------------------------------------------------------------------------------------------
-int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, Logger* logger) {
+int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
     int status;
 
-    timer_ = timer;
-    ftdiHal_ = ftdiHal;
     logger_ = logger;
+    sh2Hal_ = pHal;
 
     // ---------------------------------------------------------------------------------------------
     // Open SH2/SHTP connection
     // ---------------------------------------------------------------------------------------------
     state_ = State_e::Reset; // Enter 'Reset' state
-    shtpErrors_ = 0;;
+    shtpErrors_ = 0;
 
     std::cout << "INFO: Open a session with a SensorHub \n";
-    status = sh2_open(&sh2Hal_, myEventCallback, NULL);
+    status = sh2_open(sh2Hal_, myEventCallback, NULL);
     if (status != SH2_OK) {
         std::cout << "ERROR: Failed to open a SensorHub session : " << status << "\n";
         return -1;
-    }
-
-    // Stay in loop while waiting for system reset to complete
-    int retryCnt = 3; // Number of retry allowed is 3
-    while (true) {
-		if (!WaitForResetComplete(RESET_TIMEOUT_)) {
-            // Reset Timeout expired. Retry. 
-            std::cout << "ERROR: Reset timeout. Retry ..\n";
-            if (retryCnt-- <= 0) {
-                return 1;
-            }
-            ftdiHal_->softreset();
-
-        } else {
-            break;
-        }
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -230,20 +194,33 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, L
     // ---------------------------------------------------------------------------------------------
     // Clear DCD and Reset
     // ---------------------------------------------------------------------------------------------
-    if (appConfig->clearDcd) {
-        std::cout << "INFO: Clear DCD and Reset\n";
-        uint32_t dummy = 0;
-        // Clear DCD FRS record
-        sh2_setFrs(DYNAMIC_CALIBRATION, &dummy, 0);
-
-        // Clear DCD and Reset the target system
-        state_ = State_e::Reset;
-        sh2_clearDcdAndReset();
-        // Wait for the system reset to complete
-        if (!WaitForResetComplete(RESET_TIMEOUT_)) {
-            std::cout << "ERROR: Failed to reset a SensorHub - Timeout \n";
-            return -1;
+    if (appConfig->clearDcd || appConfig->clearOfCal) {
+        bool clearDcd = false;
+        
+        if (appConfig->clearOfCal) {
+            std::cout << "INFO: Clear optical flow cal\n";
+            uint32_t dummy = 0;
+            sh2_setFrs(DR_CAL, &dummy, 0);
         }
+
+        if (appConfig->clearDcd) {
+            std::cout << "INFO: Clear DCD and Reset\n";
+            // Clear DCD FRS record
+            uint32_t dummy = 0;
+            sh2_setFrs(DYNAMIC_CALIBRATION, &dummy, 0);
+
+            // Clear DCD and Reset the target system
+            state_ = State_e::Reset;
+            clearDcd = true;
+        }
+
+        // Re-init, either with clearDcdAndReset or reinitialize
+        if (clearDcd) {
+            sh2_clearDcdAndReset();
+        } else {
+            sh2_reinitialize();
+        }
+            
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -301,11 +278,8 @@ int LoggerApp::init(appConfig_s* appConfig, TimerSrv* timer, FtdiHal* ftdiHal, L
         GetSensorConfiguration(it->sensorId, &config);
         config.reportInterval_us = it->reportInterval_us;
         config.sensorSpecific = it->sensorSpecific;
+        config.sniffEnabled = it->sniffEnabled;
 
-        // std::cout << "INFO: Sensor ID : " << static_cast<uint32_t>(it->sensorId);
-        // std::cout << " - " << SensorSpec_[it->sensorId].name;
-        // std::cout << " @ " << (1e6 / config.reportInterval_us) << "Hz";
-        // std::cout << " (" << config.reportInterval_us << "us)\n";
         sh2_setSensorConfig(it->sensorId, &config);
 
         if (appConfig->useRawSampleTime && IsRawSensor(it->sensorId)) {
@@ -345,18 +319,16 @@ int LoggerApp::finish() {
     sh2_SensorConfig_t config;
     memset(&config, 0, sizeof(config));
     config.reportInterval_us = 0;
-    for (sensorList_t::iterator it = pSensorsToEnable_->begin(); it != pSensorsToEnable_->end(); ++it) {
+    for (sensorList_t::iterator it = pSensorsToEnable_->begin();
+         it != pSensorsToEnable_->end();
+         ++it) {
         sh2_setSensorConfig(it->sensorId, &config);
     }
 
-    /*
-    Sleep(100);
-    logFrs(DYNAMIC_CALIBRATION, "dcdPre_Reset");
-
-    sh2_reinitialize();
-
-    logFrs(DYNAMIC_CALIBRATION, "dcdPostReset");
-    */
+    // Save DCD
+    std::cout << "INFO: Saving DCD." << std::endl;
+    sh2_saveDcdNow();
+    std::cout << "  Done." << std::endl;
 
     std::cout << "INFO: Closing the SensorHub session" << std::endl;
     sh2_close();        // Close SH2 driver
@@ -364,72 +336,6 @@ int LoggerApp::finish() {
 
     std::cout << "INFO: Shutdown complete" << std::endl;
     return 1;
-}
-
-
-// =================================================================================================
-// LOCAL FUNCTIONS
-// =================================================================================================
-// -------------------------------------------------------------------------------------------------
-// Sh2HalOpen
-// -------------------------------------------------------------------------------------------------
-static int Sh2HalOpen(sh2_Hal_t* self) {
-    return ftdiHal_->open();
-}
-
-// -------------------------------------------------------------------------------------------------
-// Sh2HalClose
-// -------------------------------------------------------------------------------------------------
-static void Sh2HalClose(sh2_Hal_t* self) {
-    ftdiHal_->close();
-}
-
-// -------------------------------------------------------------------------------------------------
-// Sh2HalRead
-// -------------------------------------------------------------------------------------------------
-static int Sh2HalRead(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len, uint32_t* t_us) {
-    return ftdiHal_->read(pBuffer, len, t_us);
-}
-
-// -------------------------------------------------------------------------------------------------
-// Sh2HalWrite
-// -------------------------------------------------------------------------------------------------
-static int Sh2HalWrite(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len) {
-    return ftdiHal_->write(pBuffer, len);
-}
-
-// -------------------------------------------------------------------------------------------------
-// Sh2HalGetTimeUs
-// -------------------------------------------------------------------------------------------------
-static uint32_t Sh2HalGetTimeUs(sh2_Hal_t* self) {
-    return (uint32_t)timer_->getTimestamp_us();
-}
-
-
-// =================================================================================================
-// PRIVATE METHODS
-// =================================================================================================
-// -------------------------------------------------------------------------------------------------
-// LoggerApp::WaitForResetComplete
-// -------------------------------------------------------------------------------------------------
-bool LoggerApp::WaitForResetComplete(int loops) {
-    std::cout << "INFO: Waiting for System Reset ";
-
-    for (int resetCounter = 0; state_ == State_e::Reset; ++resetCounter) {
-        // Print periodic progress indicator 
-		if (resetCounter % 10000 == 9999) {
-			std::cout << ".";
-        }
-        // Check resetCounter against 'loops' limit
-        if (resetCounter >= loops) {
-            std::cout << "\n";
-            return false;
-        }
-
-        sh2_service();
-    }
-    // state_ has been updated before resetCounter reaches 'loops' limit
-    return true;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -458,11 +364,7 @@ bool LoggerApp::IsRawSensor(sh2_SensorId_t sensorId) {
 void LoggerApp::ReportProgress() {
     uint64_t currSysTime_us;
 
-    if (lastReportTime_us_ == 0) {
-        lastReportTime_us_ = timer_->getTimestamp_us();
-    }
-
-    currSysTime_us = timer_->getTimestamp_us();
+    currSysTime_us = sh2Hal_->getTimeUs(sh2Hal_);
 
     if (currSysTime_us - lastReportTime_us_ >= 1000000) {
         lastReportTime_us_ = currSysTime_us;
@@ -472,11 +374,13 @@ void LoggerApp::ReportProgress() {
         int32_t m = static_cast<int32_t>(floor((deltaT - h * 60 * 60) / 60.0));
         double s = deltaT - h * 60 * 60 - m * 60;
 
-        std::cout << "Samples: " << std::setfill(' ') << std::setw(10) << sensorEventsReceived_
-            << " Duration: " << h << ":" << std::setw(2) << std::setfill('0') << m << ":"
-            << std::setprecision(2) << s << " "
-            << " Rate: " << std::fixed << std::setprecision(2)
-            << sensorEventsReceived_ / deltaT << " Samples per seconds" << std::endl;
+        if (deltaT > 0) {
+            std::cout << "Samples: " << std::setfill(' ') << std::setw(10) << sensorEventsReceived_
+                      << " Duration: " << h << ":" << std::setw(2) << std::setfill('0') << m << ":"
+                      << std::setprecision(2) << s << " "
+                      << " Rate: " << std::fixed << std::setprecision(2)
+                      << sensorEventsReceived_ / deltaT << " Samples per second" << std::endl;
+        }
     }
 }
 
@@ -509,8 +413,8 @@ void LoggerApp::LogAllFrsRecords() {
     }
 
     const LoggerUtil::frsIdMap_s* pFrs;
-    for (int i = 0; i < LoggerUtil::NumBno080FrsRecords; i++) {
-        pFrs = &LoggerUtil::Bno080FrsRecords[i];
+    for (int i = 0; i < LoggerUtil::NumSh2FrsRecords; i++) {
+        pFrs = &LoggerUtil::Sh2FrsRecords[i];
         LogFrsRecord(pFrs->recordId, pFrs->name);
     }
 }

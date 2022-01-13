@@ -15,21 +15,84 @@
  * limitations under the License.
  */
 
-#ifndef FSPDFU_H
-#define FSPDFU_H
+#pragma once
+
+#include "sh2/sh2_hal.h"
+
+#include "Firmware.h"
+
+// ------------------------------------------------------------------------
+// Type definitions
+
+class FspDfu;
+
+// States of DFU process
+enum DfuState_e {
+    ST_INIT,
+    ST_SETTING_MODE,
+    ST_SENDING_DATA,
+    ST_WAIT_COMPLETION,
+    ST_LAUNCHING,
+    ST_FINISHED,
+};
+
+// DFU State machine Action function
+typedef DfuState_e (FspDfu::* DfuAction_t)(uint8_t *payload, uint16_t len);
+
+// DFU State machine transition
+struct DfuTransition_s {
+    DfuState_e state;
+    uint8_t reportId;
+    DfuAction_t action;
+};
+
+static void hdlr(void *cookie, uint8_t *payload, uint16_t len, uint32_t timestamp);
 
 // DFU Process for FSP200 and similar modules
 class FspDfu {
-private:
-    // Private Data
+    friend void hdlr(void *cookie, uint8_t *payload, uint16_t len, uint32_t timestamp);
+
     
-public:
+  private:
+    static const DfuTransition_s dfuStateTransition[];
+
+  private:
+    // Private Data
+    sh2_Hal_t *m_pHal;
+    void *m_pShtp;
+    int m_status;
+    bool m_firmwareOpened;
+    Firmware *m_firmware;
+    uint32_t m_appLen;
+
+    uint16_t m_wordOffset;
+    uint8_t m_writeLen;
+    
+    uint32_t m_ignoredResponses;
+    DfuState_e m_state;
+    
+  public:
     // Constructor
     FspDfu();
 
-public:
-    // Run DFU Process
-    bool run();
-};
+  private:
+    // Private methods
+    void requestUpgrade();
+    DfuState_e handleInitStatus(uint8_t *payload, uint16_t len);
+    void requestWrite();
+    DfuState_e handleModeResponse(uint8_t *payload, uint16_t len);
+    DfuState_e handleWriteResponse(uint8_t *payload, uint16_t len);
+    void requestLaunch();
+    DfuState_e handleFinalStatus(uint8_t *payload, uint16_t len);
+    DfuState_e handleLaunchResp(uint8_t *payload, uint16_t len);
+    const DfuTransition_s *findTransition(DfuState_e state, uint8_t reportId);
 
-#endif // ifndef FSPDFU_H
+
+    void initState();
+    void openFirmware();
+    void bootloader_ctrl_hdlr(uint8_t *payload, uint16_t len, uint32_t timestamp);
+
+  public:
+    // Run DFU Process
+    bool run(sh2_Hal_t *pHal, Firmware *firmware);
+};

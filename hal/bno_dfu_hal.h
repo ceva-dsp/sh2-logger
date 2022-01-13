@@ -15,12 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef BNO_DFU_LINUX_H
-#define BNO_DFU_LINUX_H
+#pragma once
 
 #include "sh2_hal.h"
 
-sh2_Hal_t * bno_dfu_hal_init(const char * device_filename);
-
-#endif // BNO_DFU_LINUX_H
-
+sh2_Hal_t* bno_dfu_hal_init(const char* device_filename);

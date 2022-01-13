@@ -1,22 +1,22 @@
 {
     "calEnable": "0x08",
     "clearDcd": false,
-    "dcdAutoSave": false,
-    "deviceNumber": 0,
+    "clearOfCal": false,
+    "dcdAutoSave": true,
     "orientation": "ned",
-    "outDsfFile": "out.dsf",
     "rawSampleTime": false,
-    "deviceNumber": 0,
     "sensorList": {
         "Game Rotation Vector": 100,
         "Gyroscope": 100,
         "Raw Optical Flow": {"rate": 100,
-                             "sensorSpecific": 1},
+                             "sensorSpecific": 0,
+                             "sniffEnabled": 1},
         "Dead Reckoning Pose": 100,
         "Accelerometer": 100,
         "Linear Acceleration": 100,
         "Raw Accelerometer": 100,
         "Raw Gyroscope": 100,
-        "Uncalibrated Gyroscope": 100
+        "Uncalibrated Gyroscope": 100,
+        "Wheel Encoder": 100
     }
 }

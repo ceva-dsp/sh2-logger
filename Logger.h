@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 
-#ifndef LOGGER_H
-#define LOGGER_H
+#pragma once
 
 extern "C" {
 #include "sh2.h"
@@ -59,5 +58,3 @@ protected:
         return (value * 180.0) / PI;
     }
 };
-
-#endif // LOGGER_H

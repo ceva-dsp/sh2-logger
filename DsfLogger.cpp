@@ -92,7 +92,7 @@ static const sensorDsfHeader_s SensorDsfHeader[] = {
     { "RawOpticalFlow",
     "MOVED{bool},LASER_ON{bool},LIN_VEL_XY[xy]{ADC},SQUAL,RES[xy],SHUTTER,FRAME_MAX,FRAME_AVG,FRAME_MIN,DT{us},SAMPLE_TIME[x]{us}" },   // 0x2C
     { "DeadReckoningPose", "LIN_POS_GLOBAL[xyz]{m},ANG_POS_GLOBAL[wxyz]{quaternion},LIN_VEL[xyz]{m/s},ANG_VEL[xyz]{rad/s},SAMPLE_TIME[x]{us}" }, // 0x2D
-    { "WheelEncoder", "TIME{s},SAMPLE_ID[x],DATA_TYPE[x],WHEEL_INDEX[x],DATA[x],TIMESTAMP{us}" }, // 0x2E
+    { "WheelEncoder", "DATA_TYPE[x],WHEEL_INDEX[x],DATA[x],SAMPLE_TIME[x]{us}" }, // 0x2E
 };
 
 static_assert((sizeof(SensorDsfHeader) / sizeof(sensorDsfHeader_s)) == (SH2_MAX_SENSOR_ID + 1),
@@ -566,7 +566,7 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
         }
         case SH2_DEAD_RECKONING_POSE:{
             // Output is ENU: rearrange if desired
-            if (orientationNed_){
+            if (orientationNed_) {
                 outFile_ << pValue->un.deadReckoningPose.linPosY << ",";
                 outFile_ << pValue->un.deadReckoningPose.linPosX << ",";
                 outFile_ << -pValue->un.deadReckoningPose.linPosZ << ",";
@@ -604,6 +604,13 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             outFile_ << pValue->un.deadReckoningPose.timestamp << "\n";
             break;
         }
+        case SH2_WHEEL_ENCODER:{
+            outFile_ << static_cast<uint16_t>(pValue->un.wheelEncoder.dataType) << ",";
+            outFile_ << static_cast<uint16_t>(pValue->un.wheelEncoder.wheelIndex) << ",";
+            outFile_ << static_cast<uint16_t>(pValue->un.wheelEncoder.data) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.wheelEncoder.timestamp) << "\n";
+            break;
+        }
         default:
             break;
     }
@@ -626,7 +633,8 @@ void DsfLogger::WriteChannelDefinition(uint8_t sensorId, bool orientation) {
 
     if (orientation) {
         if (sensorId != SH2_RAW_ACCELEROMETER && sensorId != SH2_RAW_GYROSCOPE &&
-            sensorId != SH2_RAW_MAGNETOMETER) {
+            sensorId != SH2_RAW_MAGNETOMETER && sensorId != SH2_RAW_OPTICAL_FLOW 
+            && sensorId != SH2_WHEEL_ENCODER) {
             outFile_ << "!" << static_cast<int32_t>(sensorId) << " coordinate_system=";
             if (orientationNed_) {
                 outFile_ << "\"NED\"\n";
@@ -647,7 +655,7 @@ void DsfLogger::WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExten
         WriteChannelDefinition(pValue->sensorId);
     }
 
-    if (posixOffset_ == 0 && timestamp != 0){
+    if (posixOffset_ == 0 && timestamp != 0) {
 #ifdef _WIN32
         const DWORD64 UNIX_EPOCH = 0x019DB1DED53E8000; // January 1, 1970 in Windows Ticks.
         const double TICKS_PER_SECOND = 10000000.0;    // Windows tick = 100ns.

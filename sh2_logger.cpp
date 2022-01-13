@@ -20,33 +20,30 @@
 // =================================================================================================
 // INCLUDE FILES
 // =================================================================================================
-#include "TimerService.h"
-#include "DsfLogger.h"
-#include "ConsoleLogger.h"
-#include "LoggerApp.h"
-#include "LoggerUtil.h"
-#include "FspDfu.h"
-#include "BnoDfu.h"
-
-#ifdef _WIN32
-#include "FtdiHalWin.h"
-// TODO: Add Windows DFU support
-// extern "C" {
-//    #include "bno_dfu_win32.h"
-//}
-#else
-#include "FtdiHalRpi.h"
-#include "signal.h"
-extern "C" {
-    #include "bno_dfu_linux.h"
-}
-#endif
-
 #include <string.h>
 #include <iomanip>
 #include <iostream>
 #include <string>
 #include <nlohmann/json.hpp>
+#include "tclap/CmdLine.h"
+
+#include "DsfLogger.h"
+#include "LoggerApp.h"
+#include "LoggerUtil.h"
+#include "FspDfu.h"
+#include "BnoDfu.h"
+#include "HcBinFile.h"
+
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include "signal.h"
+#endif
+
+extern "C" {
+#include "bno_dfu_hal.h"
+#include "ftdi_hal.h"
+}
 
 // =================================================================================================
 // DEFINES AND MACROS
@@ -58,268 +55,267 @@ using json = nlohmann::json;
 // =================================================================================================
 
 // =================================================================================================
+// LOCAL FUNCTION PROTOTYPES
+// =================================================================================================
+bool ParseJsonBatchFile(std::string inFilename, LoggerApp::appConfig_s* pAppConfig);
+
+
+// =================================================================================================
 // CONST LOCAL VARIABLES
 // =================================================================================================
-// JSON configuration file template
-static const json loggerJson_ = {
-    { "calEnable", "0x00" },
-    { "dfuBno", false },
-    { "dfuFsp", false },
-    { "clearDcd", false },
-    { "dcdAutoSave", false },
-#ifdef _WIN32
-    { "deviceNumber", 0 },
-#else
-    { "deviceName", "/dev/ttyUSB0" },
-#endif
-    { "orientation", "ned" },
-    { "rawSampleTime", false},
-    { "outDsfFile", "out.dsf" },
-    { "sensorList", {
-        { "Accelerometer", 0 },                         // 0x01
-        { "Gyroscope", 0 },                             // 0x02
-        { "Magnetic Field", 0 },                        // 0x03
-        { "Linear Acceleration", 0 },                   // 0x04
-        { "Rotation Vector", 0 },                       // 0x05
-        { "Gravity", 0 },                               // 0x06
-        { "Uncalibrated Gyroscope", 0 },                // 0x07
-        { "Game Rotation Vector", 0 },                  // 0x08
-        { "Geomagnetic Rotation Vector", 0 },           // 0x09
-        { "Pressure", 0 },                              // 0x0A
-        { "Ambient Light", 0 },                         // 0x0B
-        { "Humidity", 0 },                              // 0x0C
-        { "Proximity", 0 },                             // 0x0D
-        { "Temperature", 0 },                           // 0x0E
-        { "Uncalibrated MagneticField", 0 },            // 0x0F
-        { "Tap Detector", 0 },                          // 0x10
-        { "Step Counter", 0 },                          // 0x11
-        { "Significant Motion", 0 },                    // 0x12
-        { "Stability Classifier", 0 },                  // 0x13
-        { "Raw Accelerometer", 0 },                     // 0x14
-        { "Raw Gyroscope", 0 },                         // 0x15
-        { "Raw Magnetometer", 0 },                      // 0x16
-        { "Step Detector", 0 },                         // 0x18
-        { "Shake Detector", 0 },                        // 0x19
-        { "Flip Detector", 0 },                         // 0x1A
-        { "Pickup Detector", 0 },                       // 0x1B
-        { "Stability Detector", 0 },                    // 0x1C
-        { "Personal Activity Classifier", 0 },          // 0x1E
-        { "Sleep Detector", 0 },                        // 0x1F
-        { "Tilt Detector", 0 },                         // 0x20
-        { "Pocket Detector", 0 },                       // 0x21
-        { "Circle Detector", 0 },                       // 0x22
-        { "Heart Rate Monitor", 0 },                    // 0x23
-        { "ARVR Stabilized Rotation Vector", 0 },       // 0x28
-        { "ARVR Stabilized GameRotation Vector", 0 },   // 0x29
-        { "Gyro Rotation Vector", 0 },                  // 0x2A 
-        { "IZRO Motion Request", 0 },                   // 0x2B
-        { "Raw Optical Flow", {
-            {"rate", 0},
-            {"sensorSpecific",0}}},                     // 0x2C
-        { "Dead Reckoning Pose", 0},                    // 0x2D
-        } //sensorList value 
-    }, //sensorList
-};
-
-static const char DefaultJsonName[] = "logger.json";
 static const uint32_t MaxPathLen = 260;
 
 // =================================================================================================
 // LOCAL VARIABLES
 // =================================================================================================
-#ifdef _WIN32
-static TimerSrvWin timer_;
-static FtdiHalWin ftdiHal_;
-#else
-static TimerSrvRpi timer_;
-static FtdiHalRpi ftdiHal_;
-#endif
 
-static LoggerApp loggerApp_;
-static DsfLogger dsfLogger_;
-static BnoDfu bnoDfu_;
-static FspDfu fspDfu_;
-static ConsoleLogger consoleLogger_;
-static Logger * logger_;
-static bool runApp_ = true;
+// Is set to false in Break handler to stop application gracefully.
+volatile static bool runApp_ = true;
 
-// Character array for output DSF file path
-static char outDsfPath_[MaxPathLen];
+class Sh2Logger {
+  public:
+    Sh2Logger() { /* nothing to do */ }
 
-// List of sensors to be enabled
-static LoggerApp::sensorList_t sensorsToEnable_;
+  public:
+    void parseArgs(int argc, const char *argv[]);
+    int run();
+    int do_template();
+    int do_logging();
+    int do_dfu_bno();
+    int do_dfu_fsp();
+    
+  private:
+    std::string m_cmd;
+    
+    bool m_outFilenameSet;
+    std::string m_outFilename;
+    
+    bool m_inFilenameSet;
+    std::string m_inFilename;
+    
+    bool m_deviceArgSet;
+    std::string m_deviceArg;
 
-// Pointer to the batch json file path
-static const char * pBatchFilePath_ = 0;
+    bool m_clearDcd;
+    bool m_clearOfCal;
+};
 
+void Sh2Logger::parseArgs(int argc, const char *argv[]) {
+    // Process command line args
+    TCLAP::CmdLine cmd("SH2 Logging utility", ' ', "1.0");
 
-// =================================================================================================
-// LOCAL FUNCTION PROTOTYPES
-// =================================================================================================
-bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig);
+    // Command: log (default), dfu,
+    std::vector<std::string> operations = {"log", "dfu-bno", "dfu-fsp200", "template"};
+    TCLAP::ValuesConstraint<std::string> opConstr(operations);
+    TCLAP::UnlabeledValueArg<std::string> cmdArg("command", "Operation to perform", true, "log", &opConstr);
+    cmd.add(cmdArg);
 
+    // --input
+    // optional, This is the .json filename for logging or a firmware file for DFU.
+    TCLAP::ValueArg<std::string> inFilenameArg("i", "input", 
+                                               "Input filename (configuration for 'log' command, firmware file for DFU)", 
+                                               false, "", "filename");
+    cmd.add(inFilenameArg);
 
-// =================================================================================================
-// LOCAL FUNCTIONS
-// =================================================================================================
-#ifndef _WIN32
-void breakHandler(int) {
-    fprintf(stderr, "break!\n");
-    if (!runApp_) {
-        fprintf(stderr, "force quit\n");
-        exit(0);
+    // --output filename
+    // Only required for log operation.
+    TCLAP::ValueArg<std::string> outFilenameArg("o", "output", 
+                                                "Output filename (sensor .dsf log for 'log' command, logger .json configuration for 'template' command)", 
+                                                false, "", "filename");
+    cmd.add(outFilenameArg);
+
+    // --device device_name
+    TCLAP::ValueArg<std::string> deviceArg("d", "device", 
+                                           "Serial port device (For Windows, FTDI device number, usually 0.)",
+                                           false, "", "device-name");
+    cmd.add(deviceArg);
+
+    // --clear-dcd
+    // clears DCD at start of session.
+    TCLAP::SwitchArg clearDcdArg("", "clear-dcd", "Clear dynamic IMU calibration at logger start", false);
+    cmd.add(clearDcdArg);
+    
+    // --clear-of-cal
+    // clears optical flow cal at start of session.
+    TCLAP::SwitchArg clearOfCalArg("", "clear-of-cal", "Clear optical flow calibration at logger start", false);
+    cmd.add(clearOfCalArg);
+
+    // Parse them arguments
+    cmd.parse(argc, argv);
+
+    // Store values in member variables
+    m_cmd = cmdArg.getValue();
+    m_outFilenameSet = outFilenameArg.isSet();
+    m_outFilename = outFilenameArg.getValue();
+    m_inFilenameSet = inFilenameArg.isSet();
+    m_inFilename = inFilenameArg.getValue();
+    m_deviceArgSet = deviceArg.isSet();
+    m_deviceArg = deviceArg.getValue();
+    m_clearDcd = clearDcdArg.getValue();
+    m_clearOfCal = clearOfCalArg.getValue();
+}
+
+int Sh2Logger::run() {
+    if (m_cmd == "template") {
+        return do_template();
     }
-    runApp_ = false;
+    else if (m_cmd == "dfu-bno") {
+        return do_dfu_bno();
+    }
+    else if (m_cmd == "dfu-fsp200") {
+        return do_dfu_fsp();
+    }
+    else if (m_cmd == "log") {
+        return do_logging();
+    }
+
+    std::cerr << "ERROR: Unrecognized command: " << m_cmd << std::endl;
+    return -1;
 }
-#endif
 
-void usage(const char* myname) {
-    fprintf(stderr,
-            "\nUsage: %s <*.json> [--template]\n"
-            "   *.json     - Configuration file in json format\n"
-            "   --template - Generate a configuration template file, 'logger.json' \n",
-            myname);
+int Sh2Logger::do_template() {
+    // JSON configuration file template
+    static const json templateContents = {
+        { "calEnable", "0x08" },
+        { "clearDcd", false },
+        { "clearOfCal", false },
+        { "dcdAutoSave", true },
+        { "orientation", "ned" },
+        { "rawSampleTime", false},
+        { "sensorList", {
+                { "Accelerometer", 0 },                         // 0x01
+                { "Gyroscope", 0 },                             // 0x02
+                { "Magnetic Field", 0 },                        // 0x03
+                { "Linear Acceleration", 0 },                   // 0x04
+                { "Rotation Vector", 0 },                       // 0x05
+                { "Gravity", 0 },                               // 0x06
+                { "Uncalibrated Gyroscope", 0 },                // 0x07
+                { "Game Rotation Vector", 0 },                  // 0x08
+                { "Geomagnetic Rotation Vector", 0 },           // 0x09
+                { "Pressure", 0 },                              // 0x0A
+                { "Ambient Light", 0 },                         // 0x0B
+                { "Humidity", 0 },                              // 0x0C
+                { "Proximity", 0 },                             // 0x0D
+                { "Temperature", 0 },                           // 0x0E
+                { "Uncalibrated MagneticField", 0 },            // 0x0F
+                { "Tap Detector", 0 },                          // 0x10
+                { "Step Counter", 0 },                          // 0x11
+                { "Significant Motion", 0 },                    // 0x12
+                { "Stability Classifier", 0 },                  // 0x13
+                { "Raw Accelerometer", 0 },                     // 0x14
+                { "Raw Gyroscope", 0 },                         // 0x15
+                { "Raw Magnetometer", 0 },                      // 0x16
+                { "Step Detector", 0 },                         // 0x18
+                { "Shake Detector", 0 },                        // 0x19
+                { "Flip Detector", 0 },                         // 0x1A
+                { "Pickup Detector", 0 },                       // 0x1B
+                { "Stability Detector", 0 },                    // 0x1C
+                { "Personal Activity Classifier", 0 },          // 0x1E
+                { "Sleep Detector", 0 },                        // 0x1F
+                { "Tilt Detector", 0 },                         // 0x20
+                { "Pocket Detector", 0 },                       // 0x21
+                { "Circle Detector", 0 },                       // 0x22
+                { "Heart Rate Monitor", 0 },                    // 0x23
+                { "ARVR Stabilized Rotation Vector", 0 },       // 0x28
+                { "ARVR Stabilized GameRotation Vector", 0 },   // 0x29
+                { "Gyro Rotation Vector", 0 },                  // 0x2A 
+                { "IZRO Motion Request", 0 },                   // 0x2B
+                { "Raw Optical Flow", {
+                        {"rate", 0},
+                        {"sensorSpecific",0},
+                        {"sniffEnabled",0}}},                   // 0x2C
+                { "Dead Reckoning Pose", 0},                    // 0x2D
+                { "Wheel Encoder", 0},                          // 0x2E
+            } //sensorList value 
+        }, //sensorList
+    };
+
+    if (!m_outFilenameSet) {
+        std::cerr << "ERROR: No output file specified, use -o or --output argument." << std::endl;
+        return -1;
+    }
+
+    // Write a configuration file template
+    std::cout << "\nGenerate a configuration file template \"" << m_outFilename << "\". \n";
+    std::ofstream ofile(m_outFilename);
+    ofile << std::setw(4) << templateContents << std::endl;
+
+    return 0;
 }
 
+int Sh2Logger::do_logging() {
 
-// ================================================================================================
-// MAIN
-// ================================================================================================
-int main(int argc, const char* argv[]) {
-    bool argError;
+    // Start logging
+    if (!m_inFilenameSet) {
+        std::cerr << "ERROR: No config file specified, use -i or --input argument." << std::endl;
+        return -1;
+    }
+    if (!m_outFilenameSet) {
+        std::cerr << "ERROR: No output file specified, use -o or --output argument." << std::endl;
+        return -1;
+    }
+    if (!m_deviceArgSet) {
+        std::cerr << "ERROR: No device specified, use -d or --device argument." << std::endl;
+        return -1;
+    }
+
+    // appConfig holds the requested configuration for this session, as read from
+    // the input .JSON file.
     LoggerApp::appConfig_s appConfig;
-    json jBat;
 
-#ifndef _WIN32
-    struct sigaction act;
-    act.sa_handler = breakHandler;
-    sigaction(SIGINT, &act, NULL);
-#endif
+    // loggerApp uses the requested configuration (appConfig), sends the sensor
+    // module startup commands and manages the flow of data from the module.
+    LoggerApp loggerApp;
 
-    // Clear local buffers
-    memset(outDsfPath_, 0, sizeof(outDsfPath_));
-    pBatchFilePath_ = 0;
-    argError = true;
-
-    // Process the argv[] arguments
-    for (int i = 1, j = 0; i < argc; i++) {
-        const char* arg = argv[i];
-        if (arg[0] == '-') {
-            // Generate json configuration file template
-            if (strstr(arg, "--template") == arg) {
-                // Write a configuration file template
-                std::cout << "\nGenerate a configuration file template \"" << DefaultJsonName << "\". \n";
-                std::ofstream ofile(DefaultJsonName);
-                ofile << std::setw(4) << loggerJson_ << std::endl;
-                // Exit after writing the template
-                return 0;
-            } else {
-                break;
-            }
-
-        } else {
-            // Process the 'batch' option. 
-            if (strstr(arg, ".json")) {
-                pBatchFilePath_ = arg;
-                if (ParseJsonBatchFile(&appConfig)) {
-                    argError = false;
-                    break;
-                } else {
-                    return 0;
-                }
-            } else {
-                break;
-            }
-        }
-    }
- 
-    if (argError) {
-        usage(argv[0]);
+    // loggerApp uses dsfLogger to translate received data into DSF Format.
+    DsfLogger dsfLogger;
+    
+    // Parse input .json file
+    if (!ParseJsonBatchFile(m_inFilename, &appConfig)) {
+        // Error in .json file
+        std::cerr << "ERROR: Error in .json file\n";
         return -1;
     }
 
-    // --------------------------------------------------------------------------------------------
-	// Perform DFU, if requested.
-	// --------------------------------------------------------------------------------------------
-    if ((appConfig.dfuBno) && (appConfig.dfuFsp)) {
-        // Error: Can't DFU for both BNO and FSP.
-        std::cout << "ERROR: Can't do DFU as both BNO and FSP.\n";
-        return -1;
+    // Override certain params from the command line
+    if (m_clearDcd) {
+        appConfig.clearDcd = true;
     }
-    
-    if (appConfig.dfuBno) {
-        // Create a HAL for BNO08x DFU
-        // TODO: Create Windows variant of this.
-        sh2_Hal_t *pHal = bno_dfu_hal_init(appConfig.deviceName);
-        if (pHal == 0) {
-            fprintf(stderr, "Error initializing DFU HAL.\n");
-            return -1;
-        }
-        
-        // BNO08x DFU
-        printf("Starting DFU for BNO08x.\n");
-        if (!bnoDfu_.run(pHal)) {
-            // DFU Failed.
-            std::cout << "ERROR: DFU for BNO08x failed.\n";
-            return -1;
-        }
-        printf("DFU completed successfully.\n");
-    }
-    
-    if (appConfig.dfuFsp) {
-        // FSP200 DFU
-        if (!fspDfu_.run()) {
-            // DFU Failed.
-            std::cout << "ERROR: DFU for FSP200 failed.\n";
-            return -1;
-        }
+    if (m_clearOfCal) {
+        appConfig.clearOfCal = true;
     }
 
-    // ### Check for no sensors enabled.
+
     // --------------------------------------------------------------------------------------------
 	// Start Application
 	// --------------------------------------------------------------------------------------------
 	runApp_ = true;
 
-    // if (appConfig.pSensorsToEnable->empty()) {
-    //    std::cout << "ERROR: No sensor is enabled. Abort.\n";
-    //     return -1;
-    // }
-
-	// Initialize DSF Logger
-    bool rv = dsfLogger_.init(outDsfPath_, appConfig.orientationNed);
-    if (rv) {
-        logger_ = &dsfLogger_;
-    } else {
-        std::cout << "ERROR: Unable to open dsf file:  \"" << outDsfPath_ << "\"" << std::endl;
-        std::cout << "ERROR: Display sensor data on the console instead." << std::endl;
-
-        // Issue with the specified DSF output file path.
-        // Use the ConsoleLogger to show sensor data on the console instead.
-        consoleLogger_.init(outDsfPath_, appConfig.orientationNed);
-        logger_ = &consoleLogger_;
+    if (appConfig.pSensorsToEnable->empty()) {
+        std::cerr << "ERROR: No sensors enabled. Abort.\n";
+        return -1;
     }
 
-    // Initialize Timer
-    timer_.init();
+	// Initialize DSF Logger
+    bool rv = dsfLogger.init(m_outFilename.c_str(), appConfig.orientationNed);
+    if (!rv) {
+        std::cerr << "ERROR: Unable to open dsf file:  \"" << m_outFilename << "\"" << std::endl;
+        return -1;
+    }
 
     // Initialze FTDI HAL
     int status;
-#ifdef _WIN32
-    status = ftdiHal_.init(appConfig.deviceNumber, &timer_);
-#else
-    status = ftdiHal_.init(appConfig.deviceName, &timer_);
-#endif
-    if (status != 0) {
-        std::cout << "ERROR: Initialize FTDI HAL failed!\n";
+    sh2_Hal_t *pHal = ftdi_hal_init(m_deviceArg.c_str());
+
+    if (pHal == 0) {
+        std::cerr << "ERROR: Initialize FTDI HAL failed!\n";
         return -1;
     }
-    FtdiHal* pFtdiHal = &ftdiHal_;
 
     // Initialize the LoggerApp
-    status = loggerApp_.init(&appConfig, &timer_, &ftdiHal_, logger_);
+    status = loggerApp.init(&appConfig, pHal, &dsfLogger);
     if (status != 0) {
-        std::cout << "ERROR: Initialize LoggerApp failed!\n";
+        std::cerr << "ERROR: Initialize LoggerApp failed!\n";
         return -1;
     }
 
@@ -338,13 +334,13 @@ int main(int argc, const char* argv[]) {
 
 	std::cout << "\nProcessing Sensor Reports . . ." << std::endl;
 
-	uint64_t currSysTime_us = timer_.getTimestamp_us();
-	uint64_t lastChecked_us = currSysTime_us;
+	uint32_t currSysTime_us = pHal->getTimeUs(pHal);
+	uint32_t lastChecked_us = currSysTime_us;
 
     while (runApp_) {
 
 #ifdef _WIN32
-        currSysTime_us = timer_.getTimestamp_us();
+        currSysTime_us = pHal->getTimeUs(pHal);
 		
 		if (currSysTime_us - lastChecked_us > 200000) {
             lastChecked_us = currSysTime_us;
@@ -363,12 +359,12 @@ int main(int argc, const char* argv[]) {
         }
 #endif
 
-        loggerApp_.service();
+        loggerApp.service();
     }
 
     std::cout << "\nINFO: Shutting down" << std::endl;
 
-    loggerApp_.finish();
+    loggerApp.finish();
 
 #ifdef _WIN32
     SetConsoleMode(hstdin, mode);
@@ -376,24 +372,140 @@ int main(int argc, const char* argv[]) {
     return 0;
 }
 
+int Sh2Logger::do_dfu_bno() {
+    // Make sure a filename was specified
+    if (!m_inFilenameSet) {
+        std::cerr << "ERROR: No firmware file specified, use -i or --input argument." << std::endl;
+        return -1;
+    }
+    
+    // Perform DFU for BNO
+    // Create a HAL for BNO08x DFU
+    if (!m_deviceArgSet) {
+        std::cerr << "ERROR: No serial device specified, use --device argument." << std::endl;
+        return -1;
+    }
+    
+    sh2_Hal_t *pHal = bno_dfu_hal_init(m_deviceArg.c_str());
+    
+    if (pHal == 0) {
+        std::cerr << "ERROR: Could not initialize DFU HAL.\n";
+        return -1;
+    }
+
+    {
+        // Open firmware file
+        HcBinFile firmware(m_inFilename);
+        
+        // BNO08x DFU
+        BnoDfu bnoDfu;
+        std::cout << "Starting DFU for BNO08x.\n";
+        if (!bnoDfu.run(pHal, &firmware)) {
+            // DFU Failed.
+            std::cerr << "ERROR: DFU for BNO08x failed.\n";
+            return -1;
+        }
+    
+        std::cout << "DFU completed successfully.\n";
+    }
+    
+    return 0;
+}
+
+int Sh2Logger::do_dfu_fsp() {
+    // Make sure a filename was specified
+    if (!m_inFilenameSet) {
+        std::cerr << "ERROR: No firmware file specified, use -i or --input argument." << std::endl;
+        return -1;
+    }
+    
+    // Perform DFU for BNO
+    // Create a HAL for BNO08x DFU
+    if (!m_deviceArgSet) {
+        std::cerr << "ERROR: No serial device specified, use --device argument." << std::endl;
+        return -1;
+    }
+
+    sh2_Hal_t *pHal = ftdi_hal_dfu_init(m_deviceArg.c_str());
+    
+    if (pHal == 0) {
+        std::cerr << "ERROR: Could not initialize DFU HAL.\n";
+        return -1;
+    }
+        
+    // FSP200 DFU
+    FspDfu fspDfu;
+    Firmware * firmware = new HcBinFile(m_inFilename);
+    std::cout << "Starting DFU for FSP200.\n";
+    if (!fspDfu.run(pHal, firmware)) {
+        // DFU Failed.
+        std::cerr << "ERROR: DFU for FSP200 failed.\n";
+        return -1;
+    }
+    
+    std::cout << "DFU completed successfully.\n";
+    return 0;
+}
+
+// -----------------------------------------------------------------------  
+
+// List of sensors to be enabled
+static LoggerApp::sensorList_t sensorsToEnable_;
+
+// =================================================================================================
+// LOCAL FUNCTIONS
+// =================================================================================================
+#ifndef _WIN32
+void breakHandler(int signo) {
+    if (signo == SIGINT) {
+        if (!runApp_) {
+            std::cerr << "force quit.\n";
+            exit(0);
+        }
+        runApp_ = false;
+    }
+}
+#endif
+
+// ================================================================================================
+// MAIN
+// ================================================================================================
+ int main(int argc, const char* argv[]) {
+
+#ifndef _WIN32
+    struct sigaction act;
+    memset(&act, 0, sizeof(act));
+    act.sa_handler = breakHandler;
+    sigaction(SIGINT, &act, NULL);
+#endif
+
+    Sh2Logger sh2_logger;
+
+    // Process command line, setting up sh2_logger to run its operation
+    sh2_logger.parseArgs(argc, argv);
+
+    // Run the operation
+    return sh2_logger.run();
+}
+
 
 // ================================================================================================
 // ParseJsonBatchFile
 // ================================================================================================
-bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
+bool ParseJsonBatchFile(std::string inFilename, LoggerApp::appConfig_s* pAppConfig) {
     json jBat;
     bool foundSensorList = false;
 
-    std::cout << "\nINFO: (json) Process the batch json file \'" << pBatchFilePath_  << "\' ... \n";
+    std::cout << "\nINFO: (json) Process the batch json file \'" << inFilename  << "\' ... \n";
 
     // Batch file is specified, extract the configuration options.
-    std::ifstream ifile(pBatchFilePath_);
+    std::ifstream ifile(inFilename);
 
     // Read batch file into JSON object
     try {
         ifile >> jBat;
     } catch (...) {
-        std::cout << "\nERROR: Json parser error. Abort!\n";
+        std::cerr << "\nERROR: Json parser error. Abort!\n";
         return false;
     }
 
@@ -413,25 +525,14 @@ bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
             } else {
                 std::cout << "Disable\n";
             }
-            
-        } else if (it.key().compare("dfuBno") == 0) {
-            pAppConfig->dfuBno = it.value();
-            std::cout << "INFO: (json) DFU for BNO : ";
-            if (pAppConfig->dfuBno) {
+        } else if (it.key().compare("clearOfCal") == 0) {
+            pAppConfig->clearOfCal = it.value();
+            std::cout << "INFO: (json) Clear OF Cal : ";
+            if (pAppConfig->clearOfCal) {
                 std::cout << "Enable\n";
             } else {
                 std::cout << "Disable\n";
             }
-            
-        } else if (it.key().compare("dfuFsp") == 0) {
-            pAppConfig->dfuFsp = it.value();
-            std::cout << "INFO: (json) DFU for FSP : ";
-            if (pAppConfig->dfuFsp) {
-                std::cout << "Enable\n";
-            } else {
-                std::cout << "Disable\n";
-            }
-
         } else if (it.key().compare("dcdAutoSave") == 0) {
             pAppConfig->dcdAutoSave = it.value();
             std::cout << "INFO: (json) DCD Auto Save : ";
@@ -440,19 +541,6 @@ bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
             } else {
                 std::cout << "Disable\n";
             }
-
-        } else if (it.key().compare("deviceNumber") == 0) {
-            pAppConfig->deviceNumber = it.value();
-            std::cout << "INFO: (json) Device Number : " << pAppConfig->deviceName << "\n";
-            
-        } else if (it.key().compare("deviceName") == 0) {
-            std::string val = it.value();
-            strncpy(pAppConfig->deviceName, val.c_str(), sizeof(pAppConfig->deviceName)-1);
-            pAppConfig->deviceName[sizeof(pAppConfig->deviceName)-1] = '\0';
-            
-            std::cout << "INFO: (json) Device Name size : " << sizeof(pAppConfig->deviceName) << "\n";
-            std::cout << "INFO: (json) Device Name : " << pAppConfig->deviceName << "\n";
-            
         } else if (it.key().compare("orientation") == 0) {
             std::string val = it.value();
             std::cout << "INFO: (json) Orientation : "; 
@@ -472,17 +560,6 @@ bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
             } else {
                 std::cout << "Disable\n";
             }
-
-        } else if (it.key().compare("outDsfFile") == 0) {
-            std::string val = it.value();
-            if (val.size() < MaxPathLen) {
-                memcpy(outDsfPath_, val.c_str(), val.size());
-                std::cout << "INFO: (json) DSF Output file : " << outDsfPath_ << "\n";
-            } else {
-                std::cout << "ERROR: The length of the output DSF file path exceeds the limit (max 260 characters). Abort. \n";
-                return false;
-            }
-
         } else if (it.key().compare("sensorList") == 0) {
             foundSensorList = true;
 
@@ -500,6 +577,8 @@ bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
                             rate = sc.value();
                         } else if (strcmp(sc.key().c_str(), "sensorSpecific") == 0){
                             config.sensorSpecific = sc.value();
+                        } else if (strcmp(sc.key().c_str(), "sniffEnabled") == 0){
+                            config.sniffEnabled = sc.value();
                         }
                     }
                 }
@@ -528,7 +607,7 @@ bool ParseJsonBatchFile(LoggerApp::appConfig_s* pAppConfig) {
     }
 
     if (!foundSensorList) {
-        std::cout << "\nERROR: \"sensorList\" is not specified in the json file. Abort. \n";
+        std::cerr << "\nERROR: \"sensorList\" is not specified in the json file. Abort. \n";
         return false;
     }
 

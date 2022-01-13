@@ -4,3 +4,6 @@
 [submodule "sh2"]
 	path = sh2
 	url = ../sh2
+[submodule "tclap"]
+	path = tclap
+	url = https://github.com/mirror/tclap.git

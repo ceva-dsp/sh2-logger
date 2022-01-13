@@ -28,8 +28,7 @@
  *
  */
 
-#ifndef HCBIN_H
-#define HCBIN_H
+#pragma once
 
 #include <stdint.h>
 
@@ -92,5 +91,3 @@ typedef struct HcBin_s {
      */
     int (*getAppData)(uint8_t *packet, uint32_t offset, uint32_t len);
 } HcBin_t;
-
-#endif

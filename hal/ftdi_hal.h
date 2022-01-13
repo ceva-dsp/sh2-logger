@@ -17,34 +17,7 @@
 
 #pragma once
 
-extern "C" {
-#include "sh2/sh2_hal.h"
-}
+#include "sh2_hal.h"
 
-#define MAX_PACKET_LEN (64)
-
-class Firmware;
-
-// DFU Process for BNO08x and related modules
-class BnoDfu {
-  private:
-    // Private Data
-    sh2_Hal_t *pHal;
-    uint8_t dfuBuff[MAX_PACKET_LEN + 2];
-    
-  public:
-    // Constructor
-    BnoDfu();
-
-  private:
-    // Private methods
-    int dfuSend(uint8_t* pData, uint32_t len);
-    int sendAppSize(uint32_t appSize);
-    int sendPktSize(uint8_t packetLen);
-    int sendPkt(uint8_t* pData, uint32_t len);
-    
-  public:
-    // Public API
-    // Run DFU Process
-    bool run(sh2_Hal_t *pHal, Firmware *firmware);
-};
+sh2_Hal_t* ftdi_hal_init(const char* device_filename);
+sh2_Hal_t* ftdi_hal_dfu_init(const char* device_filename);

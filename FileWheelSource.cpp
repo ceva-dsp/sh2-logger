@@ -25,6 +25,7 @@
 #include <cstring>
 #include <iostream>
 #include <thread>
+#include <string>
 
 
 FileWheelSource::FileWheelSource(const char* fn)

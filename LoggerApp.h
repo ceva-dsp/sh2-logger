@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 
-#ifndef LOGGER_APP_H
-#define LOGGER_APP_H
+#pragma once
 
 #include <list>
 #include <stdint.h>
@@ -103,5 +102,3 @@ private:
     int LogFrsRecord(uint16_t recordId, char const* name);
     void LogAllFrsRecords();
 };
-
-#endif // LOGGER_APP_H

@@ -25,8 +25,7 @@
  *
  */
 
-#ifndef FIRMWARE_H
-#define FIRMWARE_H
+#pragma once
 
 #include <stdint.h>
 
@@ -39,5 +38,3 @@ class Firmware {
     virtual uint32_t getPacketLen() = 0;
     virtual int getAppData(uint8_t *packet, uint32_t offset, uint32_t len) = 0;
 };
-
-#endif // #ifndef FIRMWARE_H

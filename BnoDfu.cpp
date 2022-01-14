@@ -16,20 +16,20 @@
  */
 
 
+// #include <stdio.h>
 #include <string.h>
-#include <stdio.h>
+#include <iostream>
 
 #include "BnoDfu.h"
 #include "Firmware.h"
 extern "C" {
-    // #include "firmware-bno.h"
-    #include "sh2_hal.h"
-    #include "sh2_err.h"
+#include "sh2_err.h"
+#include "sh2_hal.h"
 }
 
 #define DFU_MAX_ATTEMPTS (5)
 #define DFU_SEND_TIMEOUT_US (100000)
-#define DELAY_POST_DFU_US (10000)  // 10ms pause after DFU process completes
+#define DELAY_POST_DFU_US (10000) // 10ms pause after DFU process completes
 #define ACK ('s')
 
 // Constructor
@@ -38,8 +38,7 @@ BnoDfu::BnoDfu() {
 }
 
 // I/O Utility functions
-int BnoDfu::dfuSend(uint8_t* pData, uint32_t len)
-{
+int BnoDfu::dfuSend(uint8_t* pData, uint32_t len) {
     unsigned int retries = 0;
     int status = SH2_OK;
     uint8_t ack = 0;
@@ -49,63 +48,52 @@ int BnoDfu::dfuSend(uint8_t* pData, uint32_t len)
     while (!gotAck && (retries < DFU_MAX_ATTEMPTS)) {
         uint32_t now = pHal->getTimeUs(pHal);
         uint32_t start = now;
-        
+
         // Do write
         status = 0;
-        while ((status == 0) && ((now - start) < DFU_SEND_TIMEOUT_US))
-        {
+        while ((status == 0) && ((now - start) < DFU_SEND_TIMEOUT_US)) {
             status = pHal->write(pHal, pData, len);
             now = pHal->getTimeUs(pHal);
         }
-        if (status == 0)
-        {
+        if (status == 0) {
             // recognize timeout as an error.
             status = SH2_ERR_TIMEOUT;
         }
 
         // If write succeeded, read ack
-        if (status > 0)
-        {
+        if (status > 0) {
             status = 0;
-            while ((status == 0) && ((now - start) < DFU_SEND_TIMEOUT_US))
-            {
+            while ((status == 0) && ((now - start) < DFU_SEND_TIMEOUT_US)) {
                 status = pHal->read(pHal, &ack, 1, &t);
                 now = pHal->getTimeUs(pHal);
             }
-            if (status == 0)
-            {
+            if (status == 0) {
                 // Recognize timeout as an error
                 status = SH2_ERR_TIMEOUT;
             }
         }
 
-        
+
         // If read succeeded, check for ACK
-        if (status > 0)
-        {
-            if (ack == ACK)
-            {
+        if (status > 0) {
+            if (ack == ACK) {
                 // We got a good ack
                 gotAck = true;
                 status = SH2_OK;
-            }
-            else
-            {
+            } else {
                 // We got NAK
                 gotAck = false;
                 status = SH2_ERR_HUB;
             }
         }
 
-        if (!gotAck)
-        {
+        if (!gotAck) {
             // Problem: try again.
             retries++;
         }
     }
 
-    if (status >= 0)
-    {
+    if (status >= 0) {
         status = SH2_OK;
     }
 
@@ -115,16 +103,14 @@ int BnoDfu::dfuSend(uint8_t* pData, uint32_t len)
 // --- Private utility functions --------------------------------------------------------------
 
 
-static void write32be(uint8_t *buf, uint32_t value)
-{
+static void write32be(uint8_t* buf, uint32_t value) {
     *buf++ = (value >> 24) & 0xFF;
     *buf++ = (value >> 16) & 0xFF;
     *buf++ = (value >> 8) & 0xFF;
     *buf++ = (value >> 0) & 0xFF;
 }
 
-static void appendCrc(uint8_t *packet, uint8_t len)
-{
+static void appendCrc(uint8_t* packet, uint8_t len) {
     uint16_t crc;
     uint16_t x;
 
@@ -135,8 +121,7 @@ static void appendCrc(uint8_t *packet, uint8_t len)
         for (int i = 0; i < 8; i++) {
             if ((crc ^ x) & 0x8000) {
                 crc = (crc << 1) ^ 0x1021;
-            }
-            else {
+            } else {
                 crc = crc << 1;
             }
             x <<= 1;
@@ -145,48 +130,45 @@ static void appendCrc(uint8_t *packet, uint8_t len)
 
     // Append the CRC to packet
     packet[len] = (crc >> 8) & 0xFF;
-    packet[len+1] = crc & 0xFF;
+    packet[len + 1] = crc & 0xFF;
 }
 
-int BnoDfu::sendAppSize(uint32_t appSize)
-{
+int BnoDfu::sendAppSize(uint32_t appSize) {
     write32be(dfuBuff, appSize);
     appendCrc(dfuBuff, 4);
 
     return dfuSend(dfuBuff, 6);
 }
 
-int BnoDfu::sendPktSize(uint8_t packetLen)
-{
+int BnoDfu::sendPktSize(uint8_t packetLen) {
     dfuBuff[0] = packetLen;
     appendCrc(dfuBuff, 1);
-    
+
     return dfuSend(dfuBuff, 3);
 }
 
-int BnoDfu::sendPkt(uint8_t* pData, uint32_t len)
-{
+int BnoDfu::sendPkt(uint8_t* pData, uint32_t len) {
     memcpy(dfuBuff, pData, len);
     appendCrc(dfuBuff, len);
-    
-    return dfuSend(dfuBuff, len+2);  // plus 2 for CRC
+
+    return dfuSend(dfuBuff, len + 2); // plus 2 for CRC
 }
 
 // Run DFU Process
-bool BnoDfu::run(sh2_Hal_t *pHal_, Firmware* firmware) {
+bool BnoDfu::run(sh2_Hal_t* pHal_, Firmware* firmware) {
     int rc;
     int status = SH2_OK;
     uint32_t appLen = 0;
     uint8_t packetLen = 0;
     uint32_t offset = 0;
-    const char * s = 0;
+    const char* s = 0;
 
     pHal = pHal_;
 
     // Open the hcbin object
     rc = firmware->open();
     if (rc != 0) {
-        printf("Failed to open firmware.\n");
+        std::cerr << "ERROR: Failed to open firmware.\n";
         status = SH2_ERR;
         goto end;
     }
@@ -195,7 +177,7 @@ bool BnoDfu::run(sh2_Hal_t *pHal_, Firmware* firmware) {
     s = firmware->getMeta("FW-Format");
     if ((s == 0) || (strcmp(s, "BNO_V1") != 0)) {
         // No format info or Incorrect format
-        printf("No format or incorrect format firmware.\n");
+        std::cerr << "No format or incorrect format firmware.\n";
         status = SH2_ERR_BAD_PARAM;
         goto close_and_return;
     }
@@ -204,16 +186,14 @@ bool BnoDfu::run(sh2_Hal_t *pHal_, Firmware* firmware) {
     s = firmware->getMeta("SW-Part-Number");
     if (s == 0) {
         // No part number info
-        printf("No part number info for firmware.\n");
+        std::cerr << "No part number info for firmware.\n";
         status = SH2_ERR_BAD_PARAM;
         goto close_and_return;
     }
-    if ((strcmp(s, "1000-3608") != 0) &&
-        (strcmp(s, "1000-3676") != 0) &&
-        (strcmp(s, "1000-4148") != 0) &&
-        (strcmp(s, "1000-4563") != 0)) {
+    if ((strcmp(s, "1000-3608") != 0) && (strcmp(s, "1000-3676") != 0) &&
+        (strcmp(s, "1000-4148") != 0) && (strcmp(s, "1000-4563") != 0)) {
         // Incorrect part number
-        printf("Incorrect part number info for firmware.\n");
+        std::cerr << "Incorrect part number info for firmware.\n";
         status = SH2_ERR_BAD_PARAM;
         goto close_and_return;
     }
@@ -222,7 +202,7 @@ bool BnoDfu::run(sh2_Hal_t *pHal_, Firmware* firmware) {
     appLen = firmware->getAppLen();
     if (appLen < 1024) {
         // App data is empty
-        printf("App data is empty, dummy firmware image?.\n");
+        std::cerr << "App data is empty, dummy firmware image?.\n";
         status = SH2_ERR_BAD_PARAM;
         goto close_and_return;
     }
@@ -238,7 +218,7 @@ bool BnoDfu::run(sh2_Hal_t *pHal_, Firmware* firmware) {
     // Open the HAL instance used for DFU.
     status = pHal->open(pHal);
     if (status != SH2_OK) {
-        printf("DFU Hal open returned error: %d\n", status);
+        std::cerr << "DFU Hal open returned error: %d\n", status;
         goto close_and_return;
     }
 
@@ -253,7 +233,7 @@ bool BnoDfu::run(sh2_Hal_t *pHal_, Firmware* firmware) {
     if (status != SH2_OK) {
         goto close_and_return;
     }
-    
+
     // Send firmware image
     offset = 0;
     while (offset < appLen) {
@@ -267,7 +247,7 @@ bool BnoDfu::run(sh2_Hal_t *pHal_, Firmware* firmware) {
         if (status != SH2_OK) {
             goto close_and_return;
         }
-        
+
         // Send this packet's contents
         status = sendPkt(dfuBuff, toSend);
         if (status != SH2_OK) {
@@ -284,20 +264,19 @@ close_and_return:
 
     // If update process completed successfully, delay a bit to let
     // flash writes complete.
-    if (status == SH2_OK)
-    {
+    if (status == SH2_OK) {
         uint32_t now = pHal->getTimeUs(pHal);
         uint32_t start = now;
-        while ((now - start) < DELAY_POST_DFU_US)
-        {
+        while ((now - start) < DELAY_POST_DFU_US) {
             now = pHal->getTimeUs(pHal);
         }
     }
 
     // close device
     pHal->close(pHal);
-    
+
 end:
     // return true on success
-    return (status == SH2_OK);;
+    return (status == SH2_OK);
+    ;
 }

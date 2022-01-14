@@ -33,12 +33,13 @@
 #endif
 
 #include "HcBinFile.h"
+
+#include "HcBinFile.h"
 #include <stdio.h>
 
 extern "C" {
 #include "sh2/sh2_err.h"
 };
-
 
 #define HCBIN_ID (0x6572d028)
 #define HCBIN_FF_VER (4)
@@ -94,7 +95,9 @@ int HcBinFile::open()
     
     // read Id
     status = read32be(infile, &id);
-    if (status != SH2_OK) goto cleanup;
+    if (status != SH2_OK) {
+        goto cleanup;
+    }
     if (id != HCBIN_ID) {
         // Error: file isn't an HcBin file
         status = SH2_ERR_BAD_PARAM;
@@ -103,11 +106,15 @@ int HcBinFile::open()
 
     // Read File size
     status = read32be(infile, &sz);
-    if (status != SH2_OK) goto cleanup;
+    if (status != SH2_OK) {
+        goto cleanup;
+    }
 
     // Read file format version
     status = read32be(infile, &ff_ver);
-    if (status != SH2_OK) goto cleanup;
+    if (status != SH2_OK) {
+        goto cleanup;
+    }
     if (ff_ver != HCBIN_FF_VER) {
         // This program doesn't understand this file format version
         status = SH2_ERR_BAD_PARAM;
@@ -116,7 +123,9 @@ int HcBinFile::open()
 
     // Read payload offset
     status = read32be(infile, &offset);
-    if (status != SH2_OK) goto cleanup;
+    if (status != SH2_OK) {
+        goto cleanup;
+    }
 
     // Read Metadata entries
     status = readMetadata(infile, (long int)offset);
@@ -127,8 +136,9 @@ int HcBinFile::open()
 
     // get current file position
     pos = ftell(infile);
-    if (pos < 0) goto cleanup;
-    if (pos > (long int)offset) goto cleanup;
+    if ((pos < 0) || (pos > (long int)offset)) {
+        goto cleanup;
+    }
 
     // Skip anything else between metadata and offset
     // (But include it in the CRC32)
@@ -136,7 +146,9 @@ int HcBinFile::open()
 
         int c = fgetc(infile);
         updateCrc32(c);
-        if (c == EOF) goto cleanup;
+        if (c == EOF) {
+            goto cleanup;
+        }
 
         pos += 1;
     }
@@ -152,7 +164,9 @@ int HcBinFile::open()
     // Read CRC
     computed_crc = ~m_crc32;
     status = read32be(infile, &stored_crc);
-    if (status != SH2_OK) goto cleanup;
+        if (status != SH2_OK) {
+            goto cleanup;
+        }
     if (stored_crc != computed_crc) {
         // CRC error on file contents
         status = SH2_ERR_BAD_PARAM;
@@ -188,7 +202,7 @@ int HcBinFile::close() {
     }
 
     // Clear metadata entries
-    for (MetadataKV_t* kv : m_metadata) {
+    for (MetadataKV_s *kv : m_metadata) {
         delete kv;
     }
     m_metadata.clear();
@@ -199,9 +213,11 @@ int HcBinFile::close() {
 }
 
 const char* HcBinFile::getMeta(const char* key) {
-    if (!m_open) return 0;
+    if (!m_open) {
+        return NULL;
+    }
     
-    for (MetadataKV_t* kv : m_metadata) {
+    for (MetadataKV_s *kv : m_metadata) {
         if (kv->key == key) {
             // Found the requested key
             return kv->value.c_str();
@@ -209,25 +225,33 @@ const char* HcBinFile::getMeta(const char* key) {
     }
 
     // Not found.
-    return 0;
+    return NULL;
 }
 
 uint32_t HcBinFile::getAppLen() {
-    if (!m_open) return SH2_ERR;
+    if (!m_open) {
+        return SH2_ERR;
+    }
     
     return m_appDataLen;
 }
 
 uint32_t HcBinFile::getPacketLen() {
-    if (!m_open) return SH2_ERR;
+    if (!m_open) {
+        return SH2_ERR;
+    }
 
     // No preferred packet length with this implementation.
     return 0;
 }
 
 int HcBinFile::getAppData(uint8_t* packet, uint32_t offset, uint32_t len) {
-    if (!m_open) return SH2_ERR;
-    if (offset+len > m_appDataLen) return SH2_ERR_BAD_PARAM;
+    if (!m_open) {
+        return SH2_ERR;
+    }
+    if (offset+len > m_appDataLen) {
+        return SH2_ERR_BAD_PARAM;
+    }
 
     for (uint32_t copied = 0; copied < len; copied++) {
         packet[copied] = m_appData[offset+copied];
@@ -269,7 +293,9 @@ int HcBinFile::readMetadata(FILE * infile, long int offset) {
     while (pos < offset) {
         bool ungot = false;
         int c = fgetc(infile);
-        if (c == EOF) return SH2_ERR_BAD_PARAM;
+        if (c == EOF) {
+            return SH2_ERR_BAD_PARAM;
+        }
 
         if (state == ParseState::KEY) {
             if (c == ':') {
@@ -291,7 +317,7 @@ int HcBinFile::readMetadata(FILE * infile, long int offset) {
                 state = ParseState::EOL;
 
                 // store key/value pair
-                MetadataKV_t *kv = new MetadataKV_t();
+                MetadataKV_s *kv = new MetadataKV_s();
                 kv->key = key;
                 kv->value = value;
                 m_metadata.push_back(kv);
@@ -352,8 +378,9 @@ void HcBinFile::updateCrc32(uint8_t c)
     for (int n = 0; n < 8; n++) {
         uint32_t b = (c ^ m_crc32) & 1;
         m_crc32 >>= 1;
-        if (b)
+        if (b) {
             m_crc32 = m_crc32 ^ 0xEDB88320;
+        }
         c >>= 1;
     }
 }

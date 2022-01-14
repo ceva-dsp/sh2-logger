@@ -15,16 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef BNO_DFU_H
-#define BNO_DFU_H
+#pragma once
 
 #include "sh2_hal.h"
 
-#ifdef _WIN32
-sh2_Hal_t * bno_dfu_hal_init(unsigned device_num);
-#else
-sh2_Hal_t * bno_dfu_hal_init(const char * device_filename);
-#endif
-
-#endif // BNO_DFU_H
-
+sh2_Hal_t* bno_dfu_hal_init(const char* device_filename);

@@ -217,8 +217,11 @@ void DsfLogger::logProductIds(sh2_ProductIds_t ids) {
 // -------------------------------------------------------------------------------------------------
 // DsfLogger::logFrsRecord
 // -------------------------------------------------------------------------------------------------
-void DsfLogger::logFrsRecord(char const* name, uint32_t* buffer, uint16_t words) {
-    outFile_ << "!" << name << "=\"";
+void DsfLogger::logFrsRecord(uint16_t recordId, char const* name, uint32_t* buffer, uint16_t words) {
+    outFile_ << "! frs_" << std::hex << std::setw(4) << std::setfill('0') << recordId << "=[";
+    outFile_ << "\"" << name << "\",";
+    outFile_ << "\"" << std::hex << std::setw(4) << std::setfill('0') << recordId <<"\",";
+    outFile_ << "\"";
     for (uint16_t w = 0; w < words; ++w) {
         for (uint8_t b = 0; b < 4; ++b) {
             outFile_ << std::hex << std::setw(2) << std::setfill('0')
@@ -228,7 +231,7 @@ void DsfLogger::logFrsRecord(char const* name, uint32_t* buffer, uint16_t words)
             }
         }
     }
-    outFile_ << std::dec << "\"\n";
+    outFile_ << std::dec << "\"]\n";
 }
 
 // -------------------------------------------------------------------------------------------------

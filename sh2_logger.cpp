@@ -96,7 +96,9 @@ class Sh2Logger {
     bool m_deviceArgSet;
     std::string m_deviceArg;
 
+    bool m_clearDcdSet;
     bool m_clearDcd;
+    bool m_clearOfCalSet;
     bool m_clearOfCal;
 };
 
@@ -131,13 +133,19 @@ void Sh2Logger::parseArgs(int argc, const char *argv[]) {
     cmd.add(deviceArg);
 
     // --clear-dcd
-    // clears DCD at start of session.
-    TCLAP::SwitchArg clearDcdArg("", "clear-dcd", "Clear dynamic IMU calibration at logger start", false);
+    std::vector<int> zero_one = {0, 1};
+    TCLAP::ValuesConstraint<int> zero_one_constraint(zero_one);
+    TCLAP::ValueArg<int> clearDcdArg("", "clearDcd", 
+                                     "Clear dynamic IMU calibration at logger start. Overrides setting in configuration file if provided, otherwise defaults to 0 (do not clear).", 
+                                     false, 0,
+                                     &zero_one_constraint);
     cmd.add(clearDcdArg);
     
     // --clear-of-cal
-    // clears optical flow cal at start of session.
-    TCLAP::SwitchArg clearOfCalArg("", "clear-of-cal", "Clear optical flow calibration at logger start", false);
+    TCLAP::ValueArg<int> clearOfCalArg("", "clearOfCal", 
+                                     "Clear optical flow calibration at logger start. Overrides setting in configuration file if provided, otherwise defaults to 0 (do not clear).", 
+                                     false, 0,
+                                     &zero_one_constraint);
     cmd.add(clearOfCalArg);
 
     // Parse them arguments
@@ -151,7 +159,9 @@ void Sh2Logger::parseArgs(int argc, const char *argv[]) {
     m_inFilename = inFilenameArg.getValue();
     m_deviceArgSet = deviceArg.isSet();
     m_deviceArg = deviceArg.getValue();
+    m_clearDcdSet = clearDcdArg.isSet();
     m_clearDcd = clearDcdArg.getValue();
+    m_clearOfCalSet = clearOfCalArg.isSet();
     m_clearOfCal = clearOfCalArg.getValue();
 }
 
@@ -278,11 +288,11 @@ int Sh2Logger::do_logging() {
     }
 
     // Override certain params from the command line
-    if (m_clearDcd) {
-        appConfig.clearDcd = true;
+    if (m_clearDcdSet) {
+        appConfig.clearDcd = m_clearDcd;
     }
-    if (m_clearOfCal) {
-        appConfig.clearOfCal = true;
+    if (m_clearOfCalSet) {
+        appConfig.clearOfCal = m_clearOfCal;
     }
 
 

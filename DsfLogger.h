@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 
-#ifndef DSF_LOGGER_H
-#define DSF_LOGGER_H
+#pragma once
 
 #include "Logger.h"
 
@@ -82,5 +81,3 @@ private:
     void WriteChannelDefinition(uint8_t sensorId, bool orientation = true);
     void WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExtender* extender, double timestamp, int64_t delay_uS);
 };
-
-#endif // DSF_LOGGER_H

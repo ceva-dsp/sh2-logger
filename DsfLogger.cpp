@@ -566,7 +566,7 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp, int6
         }
         case SH2_DEAD_RECKONING_POSE:{
             // Output is ENU: rearrange if desired
-            if (orientationNed_){
+            if (orientationNed_) {
                 outFile_ << pValue->un.deadReckoningPose.linPosY << ",";
                 outFile_ << pValue->un.deadReckoningPose.linPosX << ",";
                 outFile_ << -pValue->un.deadReckoningPose.linPosZ << ",";
@@ -656,7 +656,7 @@ void DsfLogger::WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExten
         WriteChannelDefinition(pValue->sensorId);
     }
 
-    if (posixOffset_ == 0 && timestamp != 0){
+    if (posixOffset_ == 0 && timestamp != 0) {
 #ifdef _WIN32
         const DWORD64 UNIX_EPOCH = 0x019DB1DED53E8000; // January 1, 1970 in Windows Ticks.
         const double TICKS_PER_SECOND = 10000000.0;    // Windows tick = 100ns.

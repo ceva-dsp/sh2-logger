@@ -55,10 +55,7 @@ enum class State_e {
 // =================================================================================================
 // LOCAL VARIABLES
 // =================================================================================================
-// static TimerSrv* timer_;
 static Logger* logger_;
-// static FtdiHal* ftdiHal_;
-
 static State_e state_ = State_e::Idle;
 
 // Sensor Sample Timestamp
@@ -146,8 +143,6 @@ void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
 int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
     int status;
 
-    // timer_ = timer;
-    // ftdiHal_ = ftdiHal;
     logger_ = logger;
     sh2Hal_ = pHal;
 
@@ -177,6 +172,7 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
     // Clear DCD and Reset
     // ---------------------------------------------------------------------------------------------
     if (appConfig->clearDcd || appConfig->clearOfCal) {
+        bool clearDcd = false;
         
         if (appConfig->clearOfCal) {
             std::cout << "INFO: Clear optical flow cal\n";
@@ -192,12 +188,16 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
 
             // Clear DCD and Reset the target system
             state_ = State_e::Reset;
-            sh2_clearDcdAndReset();
+            clearDcd = true;
         }
-        else {
-            // Reset the target system without clearing DCD
+
+        // Re-init, either with clearDcdAndReset or reinitialize
+        if (clearDcd) {
+            sh2_clearDcdAndReset();
+        } else {
             sh2_reinitialize();
         }
+            
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -257,10 +257,6 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
         config.sensorSpecific = it->sensorSpecific;
         config.sniffEnabled = it->sniffEnabled;
 
-        // std::cout << "INFO: Sensor ID : " << static_cast<uint32_t>(it->sensorId);
-        // std::cout << " - " << SensorSpec_[it->sensorId].name;
-        // std::cout << " @ " << (1e6 / config.reportInterval_us) << "Hz";
-        // std::cout << " (" << config.reportInterval_us << "us)\n";
         sh2_setSensorConfig(it->sensorId, &config);
     }
 
@@ -306,15 +302,6 @@ int LoggerApp::finish() {
     std::cout << "INFO: Saving DCD." << std::endl;
     sh2_saveDcdNow();
     std::cout << "  Done." << std::endl;
-
-    /*
-    Sleep(100);
-    logFrs(DYNAMIC_CALIBRATION, "dcdPre_Reset");
-
-    sh2_reinitialize();
-
-    logFrs(DYNAMIC_CALIBRATION, "dcdPostReset");
-    */
 
     std::cout << "INFO: Closing the SensorHub session" << std::endl;
     sh2_close();        // Close SH2 driver
@@ -387,8 +374,8 @@ void LoggerApp::LogAllFrsRecords() {
     }
 
     const LoggerUtil::frsIdMap_s* pFrs;
-    for (int i = 0; i < LoggerUtil::NumBno080FrsRecords; i++) {
-        pFrs = &LoggerUtil::Bno080FrsRecords[i];
+    for (int i = 0; i < LoggerUtil::NumSh2FrsRecords; i++) {
+        pFrs = &LoggerUtil::Sh2FrsRecords[i];
         LogFrsRecord(pFrs->recordId, pFrs->name);
     }
 }

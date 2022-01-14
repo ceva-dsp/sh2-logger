@@ -17,10 +17,10 @@
 
 #include "bno_dfu_hal.h"
 
+#include "ftd2xx.h"
 #include <Windows.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include "ftd2xx.h"
 
 #include "sh2_err.h"
 
@@ -34,35 +34,33 @@
 
 // Augmented HAL structure with BNO DFU on Windows specific fields.
 struct bno_dfu_hal_s {
-    sh2_Hal_t hal_fns;            // must be first so (sh2_Hal_t *) can be cast as (bno_dfu_hal_t *)
-    
+    sh2_Hal_t hal_fns; // must be first so (sh2_Hal_t *) can be cast as (bno_dfu_hal_t *)
+
+    const char * device_name;
     bool is_open;
     bool latencySet;
-    unsigned deviceIdx;
     HANDLE ftHandle;
     HANDLE commEvent;
 };
 typedef struct bno_dfu_hal_s bno_dfu_hal_t;
 
 // Set RESETN to state.
-static void setResetN(bno_dfu_hal_t *pHal, bool state) {
+static void setResetN(bno_dfu_hal_t* pHal, bool state) {
     if (state) {
         FT_ClrDtr(pHal->ftHandle);
-    }
-    else {
+    } else {
         FT_SetDtr(pHal->ftHandle);
     }
 }
 
 // Set BOOTN to state.
-static void setBootN(bno_dfu_hal_t *pHal, bool state) {
+static void setBootN(bno_dfu_hal_t* pHal, bool state) {
     if (state) {
         FT_ClrRts(pHal->ftHandle);
-    }
-    else {
+    } else {
         FT_SetRts(pHal->ftHandle);
     }
-}    
+}
 
 static uint32_t time32_now_us() {
     static uint64_t initialTimeUs = 0;
@@ -75,8 +73,8 @@ static uint32_t time32_now_us() {
     if (freq == 0) {
         QueryPerformanceFrequency((LARGE_INTEGER*)&freq);
     }
-    
-	t_us = (uint64_t)(counterTime * 1000000 / freq);
+
+    t_us = (uint64_t)(counterTime * 1000000 / freq);
 
     if (initialTimeUs == 0) {
         initialTimeUs = t_us;
@@ -98,17 +96,24 @@ static const DWORD BAUD_RATE = 115200;
 static const UCHAR LATENCY_TIMER = 1;
 static const UCHAR LATENCY_TIMER_STARTUP = 10;
 
-static int dfu_hal_open(sh2_Hal_t *self) {
-    bno_dfu_hal_t *pHal = (bno_dfu_hal_t *)self;
+static int dfu_hal_open(sh2_Hal_t* self) {
+    bno_dfu_hal_t* pHal = (bno_dfu_hal_t*)self;
 
     // Return error if already open
-    if (pHal->is_open) return SH2_ERR;
+    if (pHal->is_open) {
+        return SH2_ERR;
+    }
 
     // Mark as open
     pHal->is_open = true;
 
+    // Interpret device name as an integer FTDI port number.
+    // If not a valid integer, atoi returns 0 and we will try
+    // to open FTDI port 0, which is usually correct.
+    unsigned deviceIdx = atoi(pHal->device_name);
+
     FT_STATUS status;
-    status = FT_Open(pHal->deviceIdx, &pHal->ftHandle);
+    status = FT_Open(deviceIdx, &pHal->ftHandle);
     if (status != FT_OK) {
         fprintf(stderr, "Unable to find an FTDI COM port\n");
         return -1;
@@ -154,63 +159,63 @@ static int dfu_hal_open(sh2_Hal_t *self) {
     FT_SetEventNotification(pHal->ftHandle, FT_EVENT_RXCHAR, pHal->commEvent);
 
     // Reset into bootloader
-    setResetN(pHal, false);   // Assert reset
-    setBootN(pHal, false);    // Assert BOOTN
-    
+    setResetN(pHal, false); // Assert reset
+    setBootN(pHal, false);  // Assert BOOTN
+
     // Delay for RESET_DELAY_US to ensure reset takes effect
     delay_us(RESET_DELAY_US);
-    
-    setResetN(pHal, true);    // Deassert reset with BOOTN asserted
+
+    setResetN(pHal, true); // Deassert reset with BOOTN asserted
 
     // Wait until we know bootloader is up
     delay_us(DFU_BOOT_DELAY_US);
-    
+
     return SH2_OK;
 }
 
-static void dfu_hal_close(sh2_Hal_t *self) {
-    bno_dfu_hal_t *pHal = (bno_dfu_hal_t *)self;
-    
+static void dfu_hal_close(sh2_Hal_t* self) {
+    bno_dfu_hal_t* pHal = (bno_dfu_hal_t*)self;
+
     // Reset into normal SHTP mode
-    setResetN(pHal, false);   // Assert reset
-    setBootN(pHal, true);     // De-assert BOOTN
-    
+    setResetN(pHal, false); // Assert reset
+    setBootN(pHal, true);   // De-assert BOOTN
+
     // Delay for RESET_DELAY_US to ensure reset takes effect
     delay_us(RESET_DELAY_US);
-    
-    setResetN(pHal, true);    // De-assert reset with BOOTN de-asserted
+
+    setResetN(pHal, true); // De-assert reset with BOOTN de-asserted
 
     // Delay to ensure fully booted before allowing system to continue.
     delay_us(SH2_BOOT_DELAY_US);
-    
+
     // Mark as not open
     pHal->is_open = false;
-    
+
     // Close descriptor
     FT_Close(pHal->ftHandle);
 }
 
-static int dfu_hal_read(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len, uint32_t *t_us) {
-    bno_dfu_hal_t *pHal = (bno_dfu_hal_t *)self;
+static int dfu_hal_read(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len, uint32_t* t_us) {
+    bno_dfu_hal_t* pHal = (bno_dfu_hal_t*)self;
     int status = 0;
     unsigned len_read = 0;
-    uint8_t *pCursor = pBuffer;
-	DWORD eventDWord;
-	DWORD txBytes;
-	DWORD rxBytes;
+    uint8_t* pCursor = pBuffer;
+    DWORD eventDWord;
+    DWORD txBytes;
+    DWORD rxBytes;
 
     FT_GetStatus(pHal->ftHandle, &rxBytes, &txBytes, &eventDWord);
     if (rxBytes > 0) {
         // Try to read
         int actually_read = 0;
-        int to_read = min(len-len_read, rxBytes);
+        int to_read = min(len - len_read, rxBytes);
         if (FT_Read(pHal->ftHandle, pCursor, to_read, &actually_read) == FT_OK) {
             if (actually_read > 0) {
                 len_read += actually_read;
                 pCursor += actually_read;
             }
         }
-        
+
         if (!pHal->latencySet) {
             FT_SetLatencyTimer(pHal->ftHandle, LATENCY_TIMER);
             pHal->latencySet = true;
@@ -224,52 +229,52 @@ static int dfu_hal_read(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len, uint32_
     return len_read;
 }
 
-static int dfu_hal_write(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len) {
-    bno_dfu_hal_t *pHal = (bno_dfu_hal_t *)self;
-    uint8_t *pNext = pBuffer;
+static int dfu_hal_write(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len) {
+    bno_dfu_hal_t* pHal = (bno_dfu_hal_t*)self;
+    uint8_t* pNext = pBuffer;
     unsigned wrote = 0;
 
     // Write data from pBuffer until the full length is written.
     while (wrote < len) {
         int written = 0;
-        int status = FT_Write(pHal->ftHandle, pNext, len-wrote, &written);
+        int status = FT_Write(pHal->ftHandle, pNext, len - wrote, &written);
         if (status == FT_OK) {
             wrote += written;
             pNext += written;
-        }
-        else {
+        } else {
             break;
         }
     }
-    
+
     // Return num bytes written
     return wrote;
 }
 
-static uint32_t dfu_hal_getTimeUs(sh2_Hal_t *self) {
+static uint32_t dfu_hal_getTimeUs(sh2_Hal_t* self) {
     return time32_now_us();
 }
 
 // dfu_hal instance data
 static bno_dfu_hal_t dfu_hal = {
-    .hal_fns = {
-        .open = dfu_hal_open,
-        .close = dfu_hal_close,
-        .read = dfu_hal_read,
-        .write = dfu_hal_write,
-        .getTimeUs = dfu_hal_getTimeUs,
-    },
-    
-    .is_open = false,
-    .latencySet = false,
-    .deviceIdx = 0,
-    .ftHandle = 0,
-    .commEvent = 0,
+        .hal_fns =
+                {
+                        .open = dfu_hal_open,
+                        .close = dfu_hal_close,
+                        .read = dfu_hal_read,
+                        .write = dfu_hal_write,
+                        .getTimeUs = dfu_hal_getTimeUs,
+                },
+
+        .device_name = "",
+        .is_open = false,
+        .latencySet = false,
+        .ftHandle = 0,
+        .commEvent = 0,
 };
 
-sh2_Hal_t * bno_dfu_hal_init(unsigned deviceIdx) {
+sh2_Hal_t* bno_dfu_hal_init(const char *device_name) {
     // Save reference to device file name, etc.
-    dfu_hal.deviceIdx = deviceIdx;
+    dfu_hal.device_name = device_name;
 
     dfu_hal.is_open = false;
     dfu_hal.latencySet = false;

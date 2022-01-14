@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 
-#ifndef BNODFU_H
-#define BNODFU_H
+#pragma once
 
 extern "C" {
 #include "sh2/sh2_hal.h"
@@ -49,5 +48,3 @@ class BnoDfu {
     // Run DFU Process
     bool run(sh2_Hal_t *pHal, Firmware *firmware);
 };
-
-#endif // ifndef BNODFU_H

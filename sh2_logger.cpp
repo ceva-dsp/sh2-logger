@@ -28,21 +28,17 @@
 #include "tclap/CmdLine.h"
 
 #include "DsfLogger.h"
-#include "ConsoleLogger.h"
 #include "LoggerApp.h"
 #include "LoggerUtil.h"
 #include "FspDfu.h"
 #include "BnoDfu.h"
+#include "HcBinFile.h"
 
 #ifdef _WIN32
 #include <Windows.h>
-#endif
-
-#ifndef _WIN32
+#else
 #include "signal.h"
 #endif
-
-#include "HcBinFile.h"
 
 extern "C" {
 #include "bno_dfu_hal.h"
@@ -98,13 +94,11 @@ class Sh2Logger {
     std::string m_inFilename;
     
     bool m_deviceArgSet;
-#ifdef _WIN32
-    unsigned m_deviceArg;
-#else
     std::string m_deviceArg;
-#endif
 
+    bool m_clearDcdSet;
     bool m_clearDcd;
+    bool m_clearOfCalSet;
     bool m_clearOfCal;
 };
 
@@ -132,27 +126,26 @@ void Sh2Logger::parseArgs(int argc, const char *argv[]) {
                                                 false, "", "filename");
     cmd.add(outFilenameArg);
 
-#ifdef _WIN32    
-    // --device device_number
-    TCLAP::ValueArg<unsigned> deviceArg("d", "device", "FTDI device number (0 if only one FTDI UART<->USB adapter is connected.)",
-                                           false, 1, "device-num");
-    cmd.add(deviceArg);
-#else
     // --device device_name
     TCLAP::ValueArg<std::string> deviceArg("d", "device", 
-                                           "Serial port device name",
+                                           "Serial port device (For Windows, FTDI device number, usually 0.)",
                                            false, "", "device-name");
     cmd.add(deviceArg);
-#endif
 
     // --clear-dcd
-    // clears DCD at start of session.
-    TCLAP::SwitchArg clearDcdArg("", "clear-dcd", "Clear dynamic IMU calibration at logger start", false);
+    std::vector<int> zero_one = {0, 1};
+    TCLAP::ValuesConstraint<int> zero_one_constraint(zero_one);
+    TCLAP::ValueArg<int> clearDcdArg("", "clearDcd", 
+                                     "Clear dynamic IMU calibration at logger start. Overrides setting in configuration file if provided, otherwise defaults to 0 (do not clear).", 
+                                     false, 0,
+                                     &zero_one_constraint);
     cmd.add(clearDcdArg);
     
     // --clear-of-cal
-    // clears optical flow cal at start of session.
-    TCLAP::SwitchArg clearOfCalArg("", "clear-of-cal", "Clear optical flow calibration at logger start", false);
+    TCLAP::ValueArg<int> clearOfCalArg("", "clearOfCal", 
+                                     "Clear optical flow calibration at logger start. Overrides setting in configuration file if provided, otherwise defaults to 0 (do not clear).", 
+                                     false, 0,
+                                     &zero_one_constraint);
     cmd.add(clearOfCalArg);
 
     // Parse them arguments
@@ -166,7 +159,9 @@ void Sh2Logger::parseArgs(int argc, const char *argv[]) {
     m_inFilename = inFilenameArg.getValue();
     m_deviceArgSet = deviceArg.isSet();
     m_deviceArg = deviceArg.getValue();
+    m_clearDcdSet = clearDcdArg.isSet();
     m_clearDcd = clearDcdArg.getValue();
+    m_clearOfCalSet = clearOfCalArg.isSet();
     m_clearOfCal = clearOfCalArg.getValue();
 }
 
@@ -174,20 +169,17 @@ int Sh2Logger::run() {
     if (m_cmd == "template") {
         return do_template();
     }
-
     else if (m_cmd == "dfu-bno") {
         return do_dfu_bno();
     }
-
     else if (m_cmd == "dfu-fsp200") {
         return do_dfu_fsp();
     }
-
     else if (m_cmd == "log") {
         return do_logging();
     }
 
-    std::cout << "ERROR: Unrecognized command: " << m_cmd << std::endl;
+    std::cerr << "ERROR: Unrecognized command: " << m_cmd << std::endl;
     return -1;
 }
 
@@ -248,7 +240,7 @@ int Sh2Logger::do_template() {
     };
 
     if (!m_outFilenameSet) {
-        std::cout << "ERROR: No output file specified, use -o or --output argument." << std::endl;
+        std::cerr << "ERROR: No output file specified, use -o or --output argument." << std::endl;
         return -1;
     }
 
@@ -264,37 +256,42 @@ int Sh2Logger::do_logging() {
 
     // Start logging
     if (!m_inFilenameSet) {
-        std::cout << "ERROR: No config file specified, use -i or --input argument." << std::endl;
+        std::cerr << "ERROR: No config file specified, use -i or --input argument." << std::endl;
         return -1;
     }
     if (!m_outFilenameSet) {
-        std::cout << "ERROR: No output file specified, use -o or --output argument." << std::endl;
+        std::cerr << "ERROR: No output file specified, use -o or --output argument." << std::endl;
         return -1;
     }
     if (!m_deviceArgSet) {
-        std::cout << "ERROR: No device specified, use -d or --device argument." << std::endl;
+        std::cerr << "ERROR: No device specified, use -d or --device argument." << std::endl;
         return -1;
     }
 
-    ConsoleLogger consoleLogger;
-    Logger* logger;
-    LoggerApp loggerApp;
+    // appConfig holds the requested configuration for this session, as read from
+    // the input .JSON file.
     LoggerApp::appConfig_s appConfig;
+
+    // loggerApp uses the requested configuration (appConfig), sends the sensor
+    // module startup commands and manages the flow of data from the module.
+    LoggerApp loggerApp;
+
+    // loggerApp uses dsfLogger to translate received data into DSF Format.
     DsfLogger dsfLogger;
     
     // Parse input .json file
     if (!ParseJsonBatchFile(m_inFilename, &appConfig)) {
         // Error in .json file
-        printf("Error in .json file\n");
+        std::cerr << "ERROR: Error in .json file\n";
         return -1;
     }
 
     // Override certain params from the command line
-    if (m_clearDcd) {
-        appConfig.clearDcd = true;
+    if (m_clearDcdSet) {
+        appConfig.clearDcd = m_clearDcd;
     }
-    if (m_clearOfCal) {
-        appConfig.clearOfCal = true;
+    if (m_clearOfCalSet) {
+        appConfig.clearOfCal = m_clearOfCal;
     }
 
 
@@ -304,41 +301,30 @@ int Sh2Logger::do_logging() {
 	runApp_ = true;
 
     if (appConfig.pSensorsToEnable->empty()) {
-        std::cout << "ERROR: No sensors enabled. Abort.\n";
+        std::cerr << "ERROR: No sensors enabled. Abort.\n";
         return -1;
     }
 
 	// Initialize DSF Logger
     bool rv = dsfLogger.init(m_outFilename.c_str(), appConfig.orientationNed);
-    if (rv) {
-        logger = &dsfLogger;
-    } else {
-        std::cout << "ERROR: Unable to open dsf file:  \"" << m_outFilename << "\"" << std::endl;
-        std::cout << "ERROR: Display sensor data on the console instead." << std::endl;
-
-        // Issue with the specified DSF output file path.
-        // Use the ConsoleLogger to show sensor data on the console instead.
-        consoleLogger.init(m_outFilename.c_str(), appConfig.orientationNed);
-        logger = &consoleLogger;
+    if (!rv) {
+        std::cerr << "ERROR: Unable to open dsf file:  \"" << m_outFilename << "\"" << std::endl;
+        return -1;
     }
 
     // Initialze FTDI HAL
     int status;
-#ifdef _WIN32
-    sh2_Hal_t *pHal = ftdi_hal_init(m_deviceArg);
-#else
     sh2_Hal_t *pHal = ftdi_hal_init(m_deviceArg.c_str());
-#endif
 
     if (pHal == 0) {
-        std::cout << "ERROR: Initialize FTDI HAL failed!\n";
+        std::cerr << "ERROR: Initialize FTDI HAL failed!\n";
         return -1;
     }
 
     // Initialize the LoggerApp
-    status = loggerApp.init(&appConfig, pHal, logger);
+    status = loggerApp.init(&appConfig, pHal, &dsfLogger);
     if (status != 0) {
-        std::cout << "ERROR: Initialize LoggerApp failed!\n";
+        std::cerr << "ERROR: Initialize LoggerApp failed!\n";
         return -1;
     }
 
@@ -398,82 +384,75 @@ int Sh2Logger::do_logging() {
 int Sh2Logger::do_dfu_bno() {
     // Make sure a filename was specified
     if (!m_inFilenameSet) {
-        std::cout << "ERROR: No firmware file specified, use -i or --input argument." << std::endl;
+        std::cerr << "ERROR: No firmware file specified, use -i or --input argument." << std::endl;
         return -1;
     }
     
     // Perform DFU for BNO
     // Create a HAL for BNO08x DFU
     if (!m_deviceArgSet) {
-        std::cout << "ERROR: No serial device specified, use --device argument." << std::endl;
+        std::cerr << "ERROR: No serial device specified, use --device argument." << std::endl;
         return -1;
     }
     
-#ifdef _WIN32
-    sh2_Hal_t *pHal = bno_dfu_hal_init(m_deviceArg);
-#else
     sh2_Hal_t *pHal = bno_dfu_hal_init(m_deviceArg.c_str());
-#endif
     
     if (pHal == 0) {
-        fprintf(stderr, "Error initializing DFU HAL.\n");
+        std::cerr << "ERROR: Could not initialize DFU HAL.\n";
         return -1;
     }
 
-    // Open firmware file
-    Firmware *firmware = new HcBinFile(m_inFilename);
+    {
+        // Open firmware file
+        HcBinFile firmware(m_inFilename);
         
-    // BNO08x DFU
-    BnoDfu bnoDfu;
-    printf("Starting DFU for BNO08x.\n");
-    if (!bnoDfu.run(pHal, firmware)) {
-        // DFU Failed.
-        std::cout << "ERROR: DFU for BNO08x failed.\n";
-        delete firmware;
-        return -1;
+        // BNO08x DFU
+        BnoDfu bnoDfu;
+        std::cout << "Starting DFU for BNO08x.\n";
+        if (!bnoDfu.run(pHal, &firmware)) {
+            // DFU Failed.
+            std::cerr << "ERROR: DFU for BNO08x failed.\n";
+            return -1;
+        }
+    
+        std::cout << "DFU completed successfully.\n";
     }
     
-    printf("DFU completed successfully.\n");
-    delete firmware;
     return 0;
 }
 
 int Sh2Logger::do_dfu_fsp() {
     // Make sure a filename was specified
     if (!m_inFilenameSet) {
-        std::cout << "ERROR: No firmware file specified, use -i or --input argument." << std::endl;
+        std::cerr << "ERROR: No firmware file specified, use -i or --input argument." << std::endl;
         return -1;
     }
     
     // Perform DFU for BNO
     // Create a HAL for BNO08x DFU
     if (!m_deviceArgSet) {
-        std::cout << "ERROR: No serial device specified, use --device argument." << std::endl;
+        std::cerr << "ERROR: No serial device specified, use --device argument." << std::endl;
         return -1;
     }
 
-#ifdef _WIN32
-    sh2_Hal_t *pHal = ftdi_hal_dfu_init(m_deviceArg);
-#else
     sh2_Hal_t *pHal = ftdi_hal_dfu_init(m_deviceArg.c_str());
-#endif
     
     if (pHal == 0) {
-        fprintf(stderr, "Error initializing DFU HAL.\n");
+        std::cerr << "ERROR: Could not initialize DFU HAL.\n";
         return -1;
     }
         
     // FSP200 DFU
     FspDfu fspDfu;
     Firmware * firmware = new HcBinFile(m_inFilename);
-    printf("Starting DFU for FSP200.\n");
+    std::cout << "Starting DFU for FSP200.\n";
     if (!fspDfu.run(pHal, firmware)) {
         // DFU Failed.
-        std::cout << "ERROR: DFU for FSP200 failed.\n";
+        std::cerr << "ERROR: DFU for FSP200 failed.\n";
         return -1;
     }
     
-    printf("DFU completed successfully.\n");
+    std::cout << "DFU completed successfully.\n";
     return 0;
 }
 
@@ -489,7 +468,7 @@ static LoggerApp::sensorList_t sensorsToEnable_;
 void breakHandler(int signo) {
     if (signo == SIGINT) {
         if (!runApp_) {
-            fprintf(stderr, "force quit\n");
+            std::cerr << "force quit.\n";
             exit(0);
         }
         runApp_ = false;
@@ -535,7 +514,7 @@ bool ParseJsonBatchFile(std::string inFilename, LoggerApp::appConfig_s* pAppConf
     try {
         ifile >> jBat;
     } catch (...) {
-        std::cout << "\nERROR: Json parser error. Abort!\n";
+        std::cerr << "\nERROR: Json parser error. Abort!\n";
         return false;
     }
 
@@ -629,7 +608,7 @@ bool ParseJsonBatchFile(std::string inFilename, LoggerApp::appConfig_s* pAppConf
     }
 
     if (!foundSensorList) {
-        std::cout << "\nERROR: \"sensorList\" is not specified in the json file. Abort. \n";
+        std::cerr << "\nERROR: \"sensorList\" is not specified in the json file. Abort. \n";
         return false;
     }
 

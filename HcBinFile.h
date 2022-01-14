@@ -25,18 +25,17 @@
  *
  */
 
-#ifndef HCBINFILE_H
-#define HCBINFILE_H
+#pragma once
 
 #include "Firmware.h"
 
 #include <string>
 #include <vector>
 
-typedef struct MetadataKV_s {
+struct MetadataKV_s {
     std::string key;
     std::string value;
-} MetadataKV_t;
+};
 
 class HcBinFile : public Firmware
 {
@@ -68,7 +67,5 @@ class HcBinFile : public Firmware
     uint32_t m_crc32;
     uint32_t m_appDataLen;
     uint8_t *m_appData;
-    std::vector<MetadataKV_t *> m_metadata;
+    std::vector<MetadataKV_s *> m_metadata;
 };
-
-#endif // #ifndef HCBINFILE_H

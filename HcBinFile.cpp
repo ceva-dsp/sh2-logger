@@ -33,8 +33,6 @@
 #endif
 
 #include "HcBinFile.h"
-
-#include "HcBinFile.h"
 #include <stdio.h>
 
 extern "C" {

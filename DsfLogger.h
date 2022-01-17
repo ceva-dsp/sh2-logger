@@ -66,7 +66,7 @@ public:
     virtual void logAsyncEvent(sh2_AsyncEvent_t* pEvent, double timestamp);
 
     virtual void logProductIds(sh2_ProductIds_t ids);
-    virtual void logFrsRecord(char const* name, uint32_t* buffer, uint16_t words);
+    virtual void logFrsRecord(uint16_t recordId, char const* name, uint32_t* buffer, uint16_t words);
     virtual void logSensorValue(sh2_SensorValue_t* pValue, double timestamp, int64_t delay_uS);
 
 private:

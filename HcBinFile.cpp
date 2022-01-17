@@ -25,10 +25,14 @@
  *
  */
 
-#define _CRT_SECURE_NO_WARNINGS
+//Suppress warning about fopen and strcpy safety under MSVC
+#ifdef _MSC_VER
+#   ifndef _CRT_SECURE_NO_WARNINGS
+#       define _CRT_SECURE_NO_WARNINGS
+#   endif
+#endif
 
 #include "HcBinFile.h"
-
 #include <stdio.h>
 
 extern "C" {
@@ -38,6 +42,7 @@ extern "C" {
 #define HCBIN_ID (0x6572d028)
 #define HCBIN_FF_VER (4)
 #define HCBIN_INIT_CRC (0xFFFFFFFF)
+
 
 // Constructor
 HcBinFile::HcBinFile(std::string filename)

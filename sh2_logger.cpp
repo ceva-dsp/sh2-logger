@@ -15,7 +15,12 @@
  * limitations under the License.
  */
 
-#define _CRT_SECURE_NO_WARNINGS
+//Suppress warning about fopen and strcpy safety under MSVC
+#ifdef _MSC_VER
+#   ifndef _CRT_SECURE_NO_WARNINGS
+#       define _CRT_SECURE_NO_WARNINGS
+#   endif
+#endif
 
 // =================================================================================================
 // INCLUDE FILES
@@ -32,6 +37,9 @@
 #include "LoggerUtil.h"
 #include "FspDfu.h"
 #include "BnoDfu.h"
+#include "WheelSource.h"
+#include "FileWheelSource.h"
+
 #include "HcBinFile.h"
 
 #ifdef _WIN32
@@ -96,6 +104,9 @@ class Sh2Logger {
     bool m_deviceArgSet;
     std::string m_deviceArg;
 
+    bool m_wheelSourceSet;
+    std::string m_wheelSource;
+
     bool m_clearDcdSet;
     bool m_clearDcd;
     bool m_clearOfCalSet;
@@ -148,6 +159,13 @@ void Sh2Logger::parseArgs(int argc, const char *argv[]) {
                                      &zero_one_constraint);
     cmd.add(clearOfCalArg);
 
+    // --wheel_source [-|file]
+    TCLAP::ValueArg<std::string> wheelSourceArg("w", "wheel_source", 
+                                                "Wheel data source. - for stdin",
+                                                false, "", "wheel_source");
+    cmd.add(wheelSourceArg);
+
+
     // Parse them arguments
     cmd.parse(argc, argv);
 
@@ -163,6 +181,8 @@ void Sh2Logger::parseArgs(int argc, const char *argv[]) {
     m_clearDcd = clearDcdArg.getValue();
     m_clearOfCalSet = clearOfCalArg.isSet();
     m_clearOfCal = clearOfCalArg.getValue();
+    m_wheelSourceSet = wheelSourceArg.isSet();
+    m_wheelSource = wheelSourceArg.getValue();
 }
 
 int Sh2Logger::run() {
@@ -312,6 +332,11 @@ int Sh2Logger::do_logging() {
         return -1;
     }
 
+    WheelSource* wheelSource = nullptr;
+    if (m_wheelSourceSet) {
+        wheelSource = new FileWheelSource(m_wheelSource.c_str());
+    }
+
     // Initialze FTDI HAL
     int status;
     sh2_Hal_t *pHal = ftdi_hal_init(m_deviceArg.c_str());
@@ -322,7 +347,7 @@ int Sh2Logger::do_logging() {
     }
 
     // Initialize the LoggerApp
-    status = loggerApp.init(&appConfig, pHal, &dsfLogger);
+    status = loggerApp.init(&appConfig, pHal, &dsfLogger, wheelSource);
     if (status != 0) {
         std::cerr << "ERROR: Initialize LoggerApp failed!\n";
         return -1;
@@ -374,6 +399,10 @@ int Sh2Logger::do_logging() {
     std::cout << "\nINFO: Shutting down" << std::endl;
 
     loggerApp.finish();
+
+    if (wheelSource != nullptr) {
+        delete wheelSource;
+    }
 
 #ifdef _WIN32
     SetConsoleMode(hstdin, mode);

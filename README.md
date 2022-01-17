@@ -5,6 +5,8 @@ The SH2 Logger is a command line utility that enables logging sensor data from a
 A group of sensors will be enabled based on the operating mode and rate specified. 
 The output SH2 sensor reports will be saved to a log file in DSF format.
 
+This utility can also be used to perform firmware updates.
+
 ## Requirements
 
 * SensorHub (BNO080, FSP200, etc.) with the FTDI Adapter 
@@ -28,7 +30,7 @@ git clone --recursive http://github.com/hcrest/sh2-logger
 # cat /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
 1
 ```
-  * For Linux, you can add a .rules file under `/etc/udev/rules.d` with
+  * For Linux, you can add a .rules file (e.g. `99-usb-serial.rules`) under `/etc/udev/rules.d` with
     the following: 
 ```
 ACTION=="add", SUBSYSTEM=="usb-serial", DRIVER=="ftdi_sio", ATTR{latency_timer}="1"
@@ -36,29 +38,94 @@ ACTION=="add", SUBSYSTEM=="usb-serial", DRIVER=="ftdi_sio", ATTR{latency_timer}=
 
 ## Building from Source
 
-Run CMAKE to generate the makefile. CMAKE detects the platform which is run on (Windows/Linux) to generate the correct makefile.
+CMake generates the build configuration for your development platform. From the root of this
+project, run
+
 ```
-cmake CMakeLists.txt
+cmake -B build 
+```
+to generate a `build` directory for your platform. 
+
+To build the application, run
+```
+cmake --build build
 ```
 
-For Windows, open the generated solution (`sh2_logger.sln`) in the Visual Studio to build the application.
-
-For Linux, run MAKE to compile and build the application.
-```
-make -f Makefile
-```
+This build has been tested on Windows with Visual Studio 16 2019 (32- and 64-bit targets).
 
 ## Running the application
+
+The application can be run in several modes. The most typical usage is
+to generate a configuration file which dictates what sensors are to be
+activated and what rates, then to run the application in logger mode
+to collect data.
+
+Run the resulting binary with the `--help` flag to print complete usage
+details.
+
 ```
-Usage: sh2_logger.exe <*.json> [--template]
-   *.json     - Configuration file in json format
-   --template - Generate a configuration template file, 'logger.json'
+./sh2_logger.exe --help
+
+USAGE:
+
+   path\to\your\sh2-logger\build\Debug\sh2_logger.exe
+                                        [--clear-of-cal] [--clear-dcd] [-d
+                                        <device-num>] [-o <filename>] [-i
+                                        <filename>] [--] [--version] [-h]
+                                        <log|dfu-bno|dfu-fsp200|template>
+
+
+Where:
+
+   --clear-of-cal
+     Clear optical flow calibration at logger start
+
+   --clear-dcd
+     Clear dynamic IMU calibration at logger start
+    
+   -d <device-num>,  --device <device-num>
+     Windows: FTDI device number (0 if only one FTDI UART<->USB adapter is
+     connected.)
+
+   -d <device-name>,  --device <device-name>
+     Linux: Serial port device name
+
+   -o <filename>,  --output <filename>
+     Output filename (sensor .dsf log for 'log' command, logger .json
+     configuration for 'template' command)
+
+   -i <filename>,  --input <filename>
+     Input filename (configuration for 'log' command, firmware file for
+     DFU)
+
+   --,  --ignore_rest
+     Ignores the rest of the labeled arguments following this flag.
+
+   --version
+     Displays version information and exits.
+
+   -h,  --help
+     Displays usage information and exits.
+
+   <log|dfu-bno|dfu-fsp200|template>
+     (required)  Operation to perform
+
+
+   SH2 Logging utility
 ```
 
-### Generate Template Json File
-Use the '--template' option to generate a batch json file template. The output file name is called "logger.json".
+### Typical Dead Reckoning (ME-Scout) configuration
+
+A configuration file for 100 Hz odometry output is provided as
+`dr100.json`. This is suitable for use with an ME-Scout evaluation
+module.
+
+
+### Custom Configuration File
+Use the 'template' subcommand to generate a json configuration file template. The output file name is specified with the `-o` option.
+
 ```
-sh2_logger.exe --template
+sh2_logger.exe template -o config.json
 ```
 
 Next, modify the generated json file. To enable sensors, specify the operating rate of each active sensor in the json file. 
@@ -67,39 +134,95 @@ For instance, to enable the GameRV sensors at 100Hz and the Accelerometer at 200
 {
     "calEnable": "0x00",
     "clearDcd": false,
+    "clearOfCal": false,
     "dcdAutoSave": false,
-    "deviceNumber": 0,
     "orientation": "ned",
-    "outDsfFile": "out.dsf",
+    "rawSampleTime": false,
     "sensorList": {
         "ARVR Stabilized GameRotation Vector": 0,
         "ARVR Stabilized Rotation Vector": 0,
         "Accelerometer": 200,
         "Ambient Light": 0,
         "Circle Detector": 0,
+		"Dead Reckoning Pose": 0,
         "Flip Detector": 0,
         "Game Rotation Vector": 100,
         "Geomagnetic Rotation Vector": 0,
         "Gravity": 0,
-		
 		....
 ```
 
-### Run The Application
-To Run the DSF logger with the updated batch file
+Additional configurations:
+ - The `calEnable` field controls the enabled calibration modes. It is
+   a hexadecimal value made by bitwise OR of the following:
+   - 0x08: Enable enhanced planar-motion accelerometer calibration.
+   - 0x01: Enable 3-D accelerometer calibration
+   - 0x02: Enable 3-D gyroscope calibration
+   - 0x04: Enable 3-D magnetometer calibration
+   - This value should be set to 0x08 for robotics applications that
+     use primarily planar motion (e.g. robot vacuum cleaners,
+     warehouse robots). 
+ - `clearDcd`: When 'true', clear Dynamic Calibration Data for the IMU
+   when starting up the application.
+ - `clearOfCal`: When 'true', clear calibration data for the optical
+   flow sensor when starting up the application.
+ - `dcdAutoSave`: When 'true', the Dynamic Calibration Data learned by
+   the IMU will be saved to non-volatile flash memory periodically. In
+   some cases, enabling this may cause short-term disruption during
+   periodic flash-writes.
+ - `orientation`: specifies axis conventions for non-raw output data.
+   "enu" (X = East/Right, Y = North/Forward, Z = Up) and "ned" (X =
+   North/Forward, Y = East/Right, Z = Up) are supported.
+ - Some sensors may have additional `sniffEnabled` and `sensorSpecific`
+   options.
+   - `sensorSpecific` behavior varies by sensor.    
+   - `sniffEnabled` indicates that the logger will not attempt to
+     configure the sensor, but will output data from it if it is
+     activated (e.g. as a dependency of another output).
+
+
+
+### Data Collection
+
+#### Running data logger
+To log data, provide a configuration file with the `-i` parameter, 
+a destination output file with the `-o` parameter, and a device
+identifier with the `-d` parameter. 
+
+In Windows builds, the argument to `-d` is 0 when there is a single
+FTDI UART-USB adapter connected -- this will typically be the case. In
+the event that multiple modules are connected to the same Windows
+host, 0 is the first one that was connected and 1 is the second (and
+so on). 
+
 ```
-sh2_logger.exe logger.json
+sh2_logger.exe log -i <config>.json -o <output>.dsf -d 0
 ```
+
+In Linux builds, the argument to `-d` is the path to the device file.
+This is typically either `/dev/ttyUSB0` when a single FTDI UART-USB
+adapter is connected or to one of the entries under
+`/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_*-if00-port0`. 
+
+
+If desired, one can set up a Linux udev rule to simplify
+identification.  Following the example above for setting the latency
+timer, the following line will automatically create a symlink at
+`/dev/imu_0` when the FTDI UART-USB adapter having serial number 
+"DK000000" is plugged in:
+
+
+```
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", ATTRS{serial}=="DK000000", SYMLINK+="imu_0"
+```
+
 
 ## Download Firmware Update
 
-After connecting to the system, but prior to enabling sensors, the sh2
-logger can perform a firmware update on the connected device.  The
-RESETN and BOOTN signals of the connected sensor hub will need to be
-connected to DTR and RTS, respectively.  Also the firmware image to be
-downloaded is "baked in" to the application at this point.  It will
-need to be compiled with an appropriate firmware-bno.c file.  To
-obtain the necessary firmware file, contact CEVA, Inc., Sensor Fusion
+This application can also be used to update the firmware on compatible
+CEVA devices. 
+
+To obtain the necessary firmware file, contact CEVA, Inc., Sensor Fusion
 Business Unit, about licensing terms.
 
 ### Connection
@@ -108,51 +231,33 @@ The DTR signal from the FTDI interface must be connected to RESETN on the BNO08x
 
 The RTS signal from the FTDI interface must be connected to BOOTN on the BNO08x.
 
-Alternatively, GPIO pins could be used to control these interface lines and the functions setResetN() and setBootN() in bno_dfu_linux.c should be changed, accordingly.
+Alternatively, GPIO pins can be used to control these interface lines
+if available for your platform. Modify the functions setResetN() and
+setBootN() in the appropriate files for your platform:
 
-### Configuration in logger.json
+ - `hal/bno_dfu_hal_Linux.c`
+ - `hal/bno_dfu_hal_Win.c`
+ - `hal/ftdi_hal_Linux.c`
+ - `hal/ftdi_hal_Win.c`
 
-To enable the DFU operation, set dfuBno to true and set deviceName to the name of the tty device attached to the BNO08x.
 
-For example:
-```json
-{
-    "calEnable": "0x00",
-    "clearDcd": false,
-    "dcdAutoSave": false,
-    "deviceName": "/dev/ttyS6",
-    "dfuBno": true,
-    "dfuFsp": false,
-    "orientation": "ned",
-    ...
-```
 
 ### Running the DFU process.
 
-With the device connected and the logger configured as above, the DFU process will run when the logger starts up:
+The following commands are run to install a firmware image on a
+compatible device.  Users of the BNO series of products should use the
+`dfu-bno` command, while suers of the FSP200 products should use
+`dfu-fsp200`. Consult with CEVA's Sensor Fusion Business Unit for
+details.
 
 ```
-./sh2_logger logger.json
-
-INFO: (json) Process the batch json file 'logger.json' ...
-INFO: (json) Calibration Enable : 0
-INFO: (json) Clear DCD : Disable
-INFO: (json) DCD Auto Save : Disable
-INFO: (json) Device Name size : 1024
-INFO: (json) Device Name : /dev/ttyS6
-INFO: (json) DFU for BNO : Enable
-INFO: (json) DFU for FSP : Disable
-INFO: (json) Orientation : NED
-INFO: (json) DSF Output file : out.dsf
-INFO: (json) Use Raw Sensor Sample Time : Disable
-INFO: (json) Extract Sensor list ...
-INFO: (json)      Sensor ID : 1 - Accelerometer @ 100Hz (10000us) [ss=0]
-
-Starting DFU for BNO08x.
-DFU Completed successfully.
-...
-
+./sh2_logger dfu-fsp200 -i <path_to_firmware.hcbin> -d <device> 
 ```
+or
+```
+./sh2_logger dfu-bno -i <path_to_firmware.hcbin> -d <device> 
+```
+
 
 ## Apache License, Version 2.0
 

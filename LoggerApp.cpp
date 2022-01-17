@@ -30,6 +30,7 @@ extern "C" {
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <chrono>
 
 
 // =================================================================================================
@@ -48,6 +49,8 @@ enum class State_e {
 #define RESET_TIMEOUT_ 1000
 #endif
 
+#define FLUSH_TIMEOUT 0.1f
+
 // =================================================================================================
 // DATA TYPES
 // =================================================================================================
@@ -56,6 +59,9 @@ enum class State_e {
 // LOCAL VARIABLES
 // =================================================================================================
 static Logger* logger_;
+
+static WheelSource* wheelSource_;
+
 static State_e state_ = State_e::Idle;
 
 // Sensor Sample Timestamp
@@ -65,6 +71,7 @@ static double currSampleTime_us_ = 0;
 static double lastSampleTime_us_ = 0;
 
 static uint64_t sensorEventsReceived_ = 0;
+static uint64_t lastSensorEventsReceived_ = 0;
 
 static uint64_t shtpErrors_ = 0;
 
@@ -113,12 +120,27 @@ void myEventCallback(void* cookie, sh2_AsyncEvent_t* pEvent) {
 // mySensorCallback
 // -------------------------------------------------------------------------------------------------
 void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
+    static std::chrono::time_point<std::chrono::steady_clock> t0 = std::chrono::steady_clock::now();
+    static bool ready = false;
     sh2_SensorValue_t value;
     int rc = SH2_OK;
 
     rc = sh2_decodeSensorEvent(&value, pEvent);
+    if (!ready) {
+        std::chrono::duration<double> dt = std::chrono::steady_clock::now() - t0;
+        if (dt.count() > FLUSH_TIMEOUT){
+            // Initial raw data samples may arrive out-of-order which
+            // can result in invalid timestamps assignment. 
+            ready = true;
+        } else {
+            return;
+        }
+    }
     if (rc != SH2_OK) {
         return;
+    }
+    if (wheelSource_ != nullptr) {
+        wheelSource_->reportModuleTime(&value, pEvent);
     }
 
     if (useSampleTime_) {
@@ -163,10 +185,12 @@ void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
 // -------------------------------------------------------------------------------------------------
 // LoggerApp::init
 // -------------------------------------------------------------------------------------------------
-int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
+int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, 
+                    Logger* logger, WheelSource* wheelSource) {
     int status;
 
     logger_ = logger;
+    wheelSource_ = wheelSource;
     sh2Hal_ = pHal;
 
     // ---------------------------------------------------------------------------------------------
@@ -302,6 +326,10 @@ int LoggerApp::service() {
 
     ReportProgress();
 
+    if (wheelSource_ != nullptr){
+        wheelSource_->service();
+    }
+
     sh2_service();
 
     return 1;
@@ -367,20 +395,24 @@ void LoggerApp::ReportProgress() {
     currSysTime_us = sh2Hal_->getTimeUs(sh2Hal_);
 
     if (currSysTime_us - lastReportTime_us_ >= 1000000) {
-        lastReportTime_us_ = currSysTime_us;
 
         double deltaT = currSampleTime_us_ - firstSampleTime_us_;
         int32_t h = static_cast<int32_t>(floor(deltaT / 60.0 / 60.0));
         int32_t m = static_cast<int32_t>(floor((deltaT - h * 60 * 60) / 60.0));
         double s = deltaT - h * 60 * 60 - m * 60;
+        double last_window = (currSysTime_us - lastReportTime_us_)*1e-6;
 
         if (deltaT > 0) {
             std::cout << "Samples: " << std::setfill(' ') << std::setw(10) << sensorEventsReceived_
                       << " Duration: " << h << ":" << std::setw(2) << std::setfill('0') << m << ":"
-                      << std::setprecision(2) << s << " "
+                      << std::setw(2) << std::setfill('0') << int(s) << " "
                       << " Rate: " << std::fixed << std::setprecision(2)
-                      << sensorEventsReceived_ / deltaT << " Samples per second" << std::endl;
+                      << sensorEventsReceived_ / deltaT << " (" <<
+                      (sensorEventsReceived_ - lastSensorEventsReceived_)/last_window
+                      << ") Samples per second" << std::endl;
         }
+        lastReportTime_us_ = currSysTime_us;
+        lastSensorEventsReceived_ = sensorEventsReceived_;
     }
 }
 

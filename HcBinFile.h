@@ -2,7 +2,7 @@
  * Copyright 2021 CEVA, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License and 
+ * you may not use this file except in compliance with the License and
  * any applicable agreements you may have with CEVA, Inc.
  * You may obtain a copy of the License at
  *
@@ -37,35 +37,34 @@ struct MetadataKV_s {
     std::string value;
 };
 
-class HcBinFile : public Firmware
-{
-  public:
+class HcBinFile : public Firmware {
+public:
     // Constructor
     HcBinFile(std::string filename);
 
-  public:
+public:
     // Firmware interface
     virtual int open();
     virtual int close();
-    virtual const char * getMeta(const char *key);
+    virtual const char* getMeta(const char* key);
     virtual uint32_t getAppLen();
     virtual uint32_t getPacketLen();
-    virtual int getAppData(uint8_t *packet, uint32_t offset, uint32_t len);
+    virtual int getAppData(uint8_t* packet, uint32_t offset, uint32_t len);
 
-  private:
+private:
     // Private member functions
-    int read32be(FILE * infile, uint32_t *pData);
-    int readMetadata(FILE * infile, long int offset);
-    int readPayload(FILE * infile);
+    int read32be(FILE* infile, uint32_t* pData);
+    int readMetadata(FILE* infile, long int offset);
+    int readPayload(FILE* infile);
     void updateCrc32(uint8_t c);
-    
-  private:
+
+private:
     // Private data
     std::string m_filename;
     bool m_open;
     uint32_t m_appLen;
     uint32_t m_crc32;
     uint32_t m_appDataLen;
-    uint8_t *m_appData;
-    std::vector<MetadataKV_s *> m_metadata;
+    uint8_t* m_appData;
+    std::vector<MetadataKV_s*> m_metadata;
 };

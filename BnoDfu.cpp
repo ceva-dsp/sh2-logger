@@ -17,8 +17,8 @@
 
 
 // #include <stdio.h>
-#include <string.h>
 #include <iostream>
+#include <string.h>
 
 #include "BnoDfu.h"
 #include "Firmware.h"

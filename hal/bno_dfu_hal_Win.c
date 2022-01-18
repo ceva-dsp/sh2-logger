@@ -36,7 +36,7 @@
 struct bno_dfu_hal_s {
     sh2_Hal_t hal_fns; // must be first so (sh2_Hal_t *) can be cast as (bno_dfu_hal_t *)
 
-    const char * device_name;
+    const char* device_name;
     bool is_open;
     bool latencySet;
     HANDLE ftHandle;
@@ -272,7 +272,7 @@ static bno_dfu_hal_t dfu_hal = {
         .commEvent = 0,
 };
 
-sh2_Hal_t* bno_dfu_hal_init(const char *device_name) {
+sh2_Hal_t* bno_dfu_hal_init(const char* device_name) {
     // Save reference to device file name, etc.
     dfu_hal.device_name = device_name;
 

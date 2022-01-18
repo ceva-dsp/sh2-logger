@@ -21,16 +21,16 @@ extern "C" {
 #include "sh2_hal.h"
 }
 
+#include "Logger.h"
 #include "LoggerApp.h"
 #include "LoggerUtil.h"
-#include "Logger.h"
 
 #include "math.h"
-#include <string.h>
+#include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <string.h>
 #include <string>
-#include <chrono>
 
 
 // =================================================================================================
@@ -103,7 +103,7 @@ void myEventCallback(void* cookie, sh2_AsyncEvent_t* pEvent) {
     // Report SHTP errors
     if (pEvent->eventId == SH2_SHTP_EVENT) {
         shtpErrors_ += 1;
-        
+
         // With latest SH2 implementation, one SHTP error,
         // for discarded advertisements, is normal.
         if (shtpErrors_ > 1) {
@@ -127,9 +127,9 @@ void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
     rc = sh2_decodeSensorEvent(&value, pEvent);
     if (!ready) {
         std::chrono::duration<double> dt = std::chrono::steady_clock::now() - t0;
-        if (dt.count() > FLUSH_TIMEOUT){
+        if (dt.count() > FLUSH_TIMEOUT) {
             // Initial raw data samples may arrive out-of-order which
-            // can result in invalid timestamps assignment. 
+            // can result in invalid timestamps assignment.
             ready = true;
         } else {
             return;
@@ -138,11 +138,11 @@ void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
     if (rc != SH2_OK) {
         return;
     }
-    
-    //This is the delay-compensated timestamp (host's best estimate of
+
+    // This is the delay-compensated timestamp (host's best estimate of
     // measurement time)
     currSampleTime_us_ = value.timestamp * 1e-6;
-    
+
     if (firstSampleTime_us_ == 0) {
         firstSampleTime_us_ = currSampleTime_us_;
     }
@@ -163,8 +163,10 @@ void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
 // -------------------------------------------------------------------------------------------------
 // LoggerApp::init
 // -------------------------------------------------------------------------------------------------
-int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, 
-                    Logger* logger, WheelSource* wheelSource) {
+int LoggerApp::init(appConfig_s* appConfig,
+                    sh2_Hal_t* pHal,
+                    Logger* logger,
+                    WheelSource* wheelSource) {
     int status;
 
     logger_ = logger;
@@ -198,7 +200,7 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal,
     // ---------------------------------------------------------------------------------------------
     if (appConfig->clearDcd || appConfig->clearOfCal) {
         bool clearDcd = false;
-        
+
         if (appConfig->clearOfCal) {
             std::cout << "INFO: Clear optical flow cal\n";
             uint32_t dummy = 0;
@@ -222,7 +224,6 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal,
         } else {
             sh2_reinitialize();
         }
-            
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -231,7 +232,7 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal,
     std::cout << "INFO: Get Product IDs\n";
     sh2_ProductIds_t productIds;
     status = sh2_getProdIds(&productIds);
-	if (status != SH2_OK) {
+    if (status != SH2_OK) {
         std::cout << "ERROR: Failed to get product IDs\n";
         return -1;
     }
@@ -276,7 +277,8 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal,
     // Enable Sensors
     std::cout << "\nINFO: Enable Sensors\n";
     sh2_SensorConfig_t config;
-    for (sensorList_t::iterator it = pSensorsToEnable_->begin(); it != pSensorsToEnable_->end(); ++it) {
+    for (sensorList_t::iterator it = pSensorsToEnable_->begin(); it != pSensorsToEnable_->end();
+         ++it) {
         GetSensorConfiguration(it->sensorId, &config);
         config.reportInterval_us = it->reportInterval_us;
         config.sensorSpecific = it->sensorSpecific;
@@ -300,7 +302,7 @@ int LoggerApp::service() {
 
     ReportProgress();
 
-    if (wheelSource_ != nullptr){
+    if (wheelSource_ != nullptr) {
         wheelSource_->service();
     }
 
@@ -321,8 +323,7 @@ int LoggerApp::finish() {
     sh2_SensorConfig_t config;
     memset(&config, 0, sizeof(config));
     config.reportInterval_us = 0;
-    for (sensorList_t::iterator it = pSensorsToEnable_->begin();
-         it != pSensorsToEnable_->end();
+    for (sensorList_t::iterator it = pSensorsToEnable_->begin(); it != pSensorsToEnable_->end();
          ++it) {
         sh2_setSensorConfig(it->sensorId, &config);
     }
@@ -333,8 +334,8 @@ int LoggerApp::finish() {
     std::cout << "  Done." << std::endl;
 
     std::cout << "INFO: Closing the SensorHub session" << std::endl;
-    sh2_close();        // Close SH2 driver
-    logger_->finish();  // Close (DSF) Logger instance
+    sh2_close();       // Close SH2 driver
+    logger_->finish(); // Close (DSF) Logger instance
 
     std::cout << "INFO: Shutdown complete" << std::endl;
     return 1;
@@ -362,15 +363,15 @@ void LoggerApp::ReportProgress() {
         int32_t h = static_cast<int32_t>(floor(deltaT / 60.0 / 60.0));
         int32_t m = static_cast<int32_t>(floor((deltaT - h * 60 * 60) / 60.0));
         double s = deltaT - h * 60 * 60 - m * 60;
-        double last_window = (currSysTime_us - lastReportTime_us_)*1e-6;
+        double last_window = (currSysTime_us - lastReportTime_us_) * 1e-6;
 
         if (deltaT > 0) {
             std::cout << "Samples: " << std::setfill(' ') << std::setw(10) << sensorEventsReceived_
                       << " Duration: " << h << ":" << std::setw(2) << std::setfill('0') << m << ":"
                       << std::setw(2) << std::setfill('0') << int(s) << " "
                       << " Rate: " << std::fixed << std::setprecision(2)
-                      << sensorEventsReceived_ / deltaT << " (" <<
-                      (sensorEventsReceived_ - lastSensorEventsReceived_)/last_window
+                      << sensorEventsReceived_ / deltaT << " ("
+                      << (sensorEventsReceived_ - lastSensorEventsReceived_) / last_window
                       << ") Samples per second" << std::endl;
         }
         lastReportTime_us_ = currSysTime_us;

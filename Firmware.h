@@ -2,7 +2,7 @@
  * Copyright 2021 CEVA, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License and 
+ * you may not use this file except in compliance with the License and
  * any applicable agreements you may have with CEVA, Inc.
  * You may obtain a copy of the License at
  *
@@ -30,11 +30,11 @@
 #include <stdint.h>
 
 class Firmware {
-  public:
+public:
     virtual int open() = 0;
     virtual int close() = 0;
-    virtual const char * getMeta(const char *key) = 0;
+    virtual const char* getMeta(const char* key) = 0;
     virtual uint32_t getAppLen() = 0;
     virtual uint32_t getPacketLen() = 0;
-    virtual int getAppData(uint8_t *packet, uint32_t offset, uint32_t len) = 0;
+    virtual int getAppData(uint8_t* packet, uint32_t offset, uint32_t len) = 0;
 };

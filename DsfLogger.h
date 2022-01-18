@@ -20,8 +20,8 @@
 #include "Logger.h"
 
 #include <fstream>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 // =================================================================================================
 // CLASS DEFINITON - SampleIdExtender
@@ -66,7 +66,8 @@ public:
     virtual void logAsyncEvent(sh2_AsyncEvent_t* pEvent, double timestamp);
 
     virtual void logProductIds(sh2_ProductIds_t ids);
-    virtual void logFrsRecord(uint16_t recordId, char const* name, uint32_t* buffer, uint16_t words);
+    virtual void
+    logFrsRecord(uint16_t recordId, char const* name, uint32_t* buffer, uint16_t words);
     virtual void logSensorValue(sh2_SensorValue_t* pValue, double timestamp, int64_t delay_uS);
 
 private:
@@ -79,5 +80,8 @@ private:
     // PRIVATE METHODS
     // ---------------------------------------------------------------------------------------------
     void WriteChannelDefinition(uint8_t sensorId, bool orientation = true);
-    void WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExtender* extender, double timestamp, int64_t delay_uS);
+    void WriteSensorReportHeader(sh2_SensorValue_t* pValue,
+                                 SampleIdExtender* extender,
+                                 double timestamp,
+                                 int64_t delay_uS);
 };

@@ -211,7 +211,6 @@ int Sh2Logger::do_template() {
         { "clearOfCal", false },
         { "dcdAutoSave", true },
         { "orientation", "ned" },
-        { "rawSampleTime", false},
         { "sensorList", {
                 { "Accelerometer", 0 },                         // 0x01
                 { "Gyroscope", 0 },                             // 0x02
@@ -591,14 +590,6 @@ bool ParseJsonBatchFile(std::string inFilename, LoggerApp::appConfig_s* pAppConf
                 std::cout << "NED\n";
             }
 
-        } else if (it.key().compare("rawSampleTime") == 0) {
-            pAppConfig->useRawSampleTime = it.value();
-            std::cout << "INFO: (json) Use Raw Sensor Sample Time : ";
-            if (pAppConfig->useRawSampleTime) {
-                std::cout << "Enable\n";
-            } else {
-                std::cout << "Disable\n";
-            }
         } else if (it.key().compare("sensorList") == 0) {
             foundSensorList = true;
 

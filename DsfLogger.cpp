@@ -237,7 +237,7 @@ void DsfLogger::logFrsRecord(uint16_t recordId, char const* name, uint32_t* buff
 // -------------------------------------------------------------------------------------------------
 // DsfLogger::logSensorValue
 // -------------------------------------------------------------------------------------------------
-void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
+void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp, int64_t delay_uS) {
     uint32_t sensorId = pValue->sensorId;
 
     if (!extenders_[sensorId]) {
@@ -246,7 +246,7 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
     }
 
     // Write Sensor Report Header
-    WriteSensorReportHeader(pValue, extenders_[sensorId], timestamp);
+    WriteSensorReportHeader(pValue, extenders_[sensorId], timestamp, delay_uS);
 
     switch (sensorId) {
 
@@ -653,7 +653,8 @@ void DsfLogger::WriteChannelDefinition(uint8_t sensorId, bool orientation) {
 // -------------------------------------------------------------------------------------------------
 // DsfLogger::WriteSensorReportHeader
 // -------------------------------------------------------------------------------------------------
-void DsfLogger::WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExtender* extender, double timestamp) {
+void DsfLogger::WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExtender* extender, double timestamp, int64_t delay_uS) {
+    static double posixOffset_ = 0;
     if (extender->isEmpty()) {
         WriteChannelDefinition(pValue->sensorId);
     }
@@ -683,11 +684,14 @@ void DsfLogger::WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExten
         double posix_time = tp.tv_sec + tp.tv_nsec*1e-9;
         posixOffset_ = posix_time - timestamp;
 #endif
+        outFile_ << "! posix_offset=" << std::fixed << std::setprecision(9) << posixOffset_ << std::endl;
     }
 
     outFile_ << "." << static_cast<uint32_t>(pValue->sensorId) << " ";
+    //First column: delay-corrected timestamp
     outFile_ << std::fixed << std::setprecision(9) << timestamp << ",";
-    outFile_ << std::fixed << std::setprecision(9) << (timestamp + posixOffset_) << ",";
+    //Second column: Host arrival time (delay term removed).
+    outFile_ << std::fixed << std::setprecision(9) << (timestamp - (delay_uS*1e-6)) << ",";
     outFile_.unsetf(std::ios_base::floatfield);
     outFile_ << extender->extend(pValue->sequence) << ",";
     outFile_ << static_cast<uint32_t>(pValue->status) << ",";

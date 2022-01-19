@@ -161,7 +161,7 @@ void Sh2Logger::parseArgs(int argc, const char* argv[]) {
                       "device-name");
     cmd.add(deviceArg);
 
-    // --clear-dcd
+    // --clearDcd [1|0]
     std::vector<int> zero_one = {0, 1};
     TCLAP::ValuesConstraint<int> zero_one_constraint(zero_one);
     TCLAP::ValueArg<int>
@@ -174,7 +174,7 @@ void Sh2Logger::parseArgs(int argc, const char* argv[]) {
                         &zero_one_constraint);
     cmd.add(clearDcdArg);
 
-    // --clear-of-cal
+    // --clearOfCal [1|0]
     TCLAP::ValueArg<int>
             clearOfCalArg("",
                           "clearOfCal",

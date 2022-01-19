@@ -55,6 +55,13 @@ cmake --build build
 This build has been tested on Windows with Visual Studio 16 2019 (32-
 and 64-bit targets) and on x86-64 and ARM Linux with gcc 9.3.0.
 
+If desired, you can use the standard `cmake --install build` target to
+install the resulting binary, documentation, and example
+configurations to `CMAKE_INSTALL_PREFIX`.  Note that under MSVC, the
+build configuration is specified at build time (via the `--config`
+flag) rather than at configuration time (via the `CMAKE_BUILD_TYPE`
+variable). 
+
 ## Running the application
 
 The application can be run in several modes. The most typical usage is

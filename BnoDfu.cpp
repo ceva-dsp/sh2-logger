@@ -16,7 +16,6 @@
  */
 
 
-// #include <stdio.h>
 #include <iostream>
 #include <string.h>
 
@@ -278,5 +277,4 @@ close_and_return:
 end:
     // return true on success
     return (status == SH2_OK);
-    ;
 }

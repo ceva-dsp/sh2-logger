@@ -140,9 +140,6 @@ static int dfu_hal_open(sh2_Hal_t* self) {
         return -1;
     }
 
-    // status = FT_ClrDtr(pHal->ftHandle);
-    // status = FT_SetDtr(pHal->ftHandle);
-
     status = FT_SetLatencyTimer(pHal->ftHandle, LATENCY_TIMER_STARTUP);
     if (status != FT_OK) {
         fprintf(stderr, "Unable to set latency timer to: %d\n", LATENCY_TIMER_STARTUP);

@@ -373,7 +373,7 @@ bool FspDfu::run(sh2_Hal_t* pHal_, Firmware* firmware) {
     m_pHal = pHal_;
 
     // initialize state.
-    // (The DFU process runs, mainly in the context of the CHAN_BOOTLOADER_CONTROL channel listener.
+    // The DFU process runs, mainly in the context of the CHAN_BOOTLOADER_CONTROL channel listener.
     initState();
 
     // Open firmware and validate it

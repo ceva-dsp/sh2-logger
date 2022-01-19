@@ -9,7 +9,8 @@ This utility can also be used to perform firmware updates.
 
 ## Requirements
 
-* SensorHub (BNO080, FSP200, etc.) with the FTDI Adapter 
+* SensorHub (BNO080, FSP200, MotionEngine Scout Evaluation Module,
+  etc.) with an FTDI UART-USB Adapter 
 * CMAKE 
 * Visual Studio (for Windows) 
 
@@ -51,7 +52,8 @@ To build the application, run
 cmake --build build
 ```
 
-This build has been tested on Windows with Visual Studio 16 2019 (32- and 64-bit targets).
+This build has been tested on Windows with Visual Studio 16 2019 (32-
+and 64-bit targets) and on x86-64 and ARM Linux with gcc 9.3.0.
 
 ## Running the application
 
@@ -68,27 +70,31 @@ details.
 
 USAGE:
 
-   path\to\your\sh2-logger\build\Debug\sh2_logger.exe
-                                        [--clear-of-cal] [--clear-dcd] [-d
-                                        <device-num>] [-o <filename>] [-i
+   path\to\your\sh2-logger\build\Debug\sh2_logger.exe [-w
+                                        <wheel_source>] [--clearOfCal <0
+                                        |1>] [--clearDcd <0|1>] [-d
+                                        <device-name>] [-o <filename>] [-i
                                         <filename>] [--] [--version] [-h]
                                         <log|dfu-bno|dfu-fsp200|template>
 
 
-Where:
+Where: 
 
-   --clear-of-cal
-     Clear optical flow calibration at logger start
+   -w <wheel_source>,  --wheel_source <wheel_source>
+     Wheel data source. - for stdin
 
-   --clear-dcd
-     Clear dynamic IMU calibration at logger start
-    
-   -d <device-num>,  --device <device-num>
-     Windows: FTDI device number (0 if only one FTDI UART<->USB adapter is
-     connected.)
+   --clearOfCal <0|1>
+     Clear optical flow calibration at logger start. Overrides setting in
+     configuration file if provided, otherwise defaults to 0 (do not
+     clear).
+
+   --clearDcd <0|1>
+     Clear dynamic IMU calibration at logger start. Overrides setting in
+     configuration file if provided, otherwise defaults to 0 (do not
+     clear).
 
    -d <device-name>,  --device <device-name>
-     Linux: Serial port device name
+     Serial port device (For Windows, FTDI device number, usually 0.)
 
    -o <filename>,  --output <filename>
      Output filename (sensor .dsf log for 'log' command, logger .json
@@ -112,13 +118,21 @@ Where:
 
 
    SH2 Logging utility
+
 ```
 
 ### Typical Dead Reckoning (ME-Scout) configuration
 
 A configuration file for 100 Hz odometry output is provided as
 `dr100.json`. This is suitable for use with an ME-Scout evaluation
-module.
+module.  
+
+If your module is configured to read wheel encoder data from the host
+interface, the file from which wheel position data will be read is
+specified with the `-w` option (use `-w -` to read data from stdin).
+See `FileWheelSource.h` for details of the expected data format.  Note
+that the application may block at startup until the input file can be
+opened.
 
 
 ### Custom Configuration File
@@ -273,3 +287,4 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+

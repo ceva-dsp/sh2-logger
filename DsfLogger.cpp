@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-21 CEVA, Inc.
+ * Copyright 2018-2022 CEVA, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License and
@@ -45,60 +45,66 @@ struct sensorDsfHeader_s {
 // LOCAL VARIABLES
 // =================================================================================================
 static const sensorDsfHeader_s SensorDsfHeader[] = {
-    { "Reserved", "" },                                                                               // 0x00
-    { "Accelerometer", "LIN_ACC_GRAVITY[xyz]{m/s^2}" },                                               // 0x01
-    { "Gyroscope", "ANG_VEL[xyz]{rad/s}" },                                                           // 0x02
-    { "MagneticField", "MAG[xyz]{m/s^2}" },                                                           // 0x03
-    { "LinearAcceleration", "LIN_ACC[xyz]{m/s^2}" },                                                  // 0x04
-    { "RotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion},ANG_POS_ACCURACY[x]{deg}" },                // 0x05
-    { "Gravity", "GRAVITY[xyz]{m/s^2}" },                                                             // 0x06
-    { "UncalibratedGyroscope", "ANG_VEL[xyz]{rad/s},BIAS[xyz]{rad/s}" },                              // 0x07
-    { "GameRotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion}" },                                     // 0x08
-    { "GeomagneticRotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion},ANG_POS_ACCURACY[x]{deg}" },     // 0x09
-    { "Pressure", "PRESSURE[x]{hPa}" },                                                               // 0x0A
-    { "AmbientLight", "AMBIENT_LIGHT[x]{lux}" },                                                      // 0x0B
-    { "Humidity", "HUMIDITY[x]{%}" },                                                                 // 0x0C
-    { "Proximity", "PROXIMITY[x]{cm}" },                                                              // 0x0D
-    { "Temperature", "TEMPERATURE[x]{degC}" },                                                        // 0x0E
-    { "UncalibratedMagField", "MAG_UNCAL[xyz]{m/s^2},MAG_BAIS[xyz]{m/s^2}" },                         // 0x0F
-    { "TapDetector", "TAP_DETECTOR[x]{state}" },                                                      // 0x10
-    { "StepCounter", "STEPS[x]{steps},STEP_COUNTER_LATENCY[x]{us}" },                                 // 0x11
-    { "SignificantMotion", "SIGNIFICANT_MOTION[x]{state}" },                                          // 0x12
-    { "StabilityClassifier", "STABILITY_CLASSIFIER[x]{state}" },                                      // 0x13
-    { "RawAccelerometer", "LIN_ACC_GRAVITY[xyz]{ADC},SAMPLE_TIME[x]{us}" },                           // 0x14
-    { "RawGyroscope", "ANG_VEL[xyz]{ADC},TEMPERATURE[x]{ADC},SAMPLE_TIME[x]{us}" },                   // 0x15
-    { "RawMagnetometer", "MAG[xyz]{ADC},SAMPLE_TIME[x]{us}" },                                        // 0x16
-    { "Reserved", "" },                                                                               // 0x17
-    { "StepDetector", "STEP_DETECTOR_LATENCY[x]{us}" },                                               // 0x18
-    { "ShakeDetector", "SHAKE_DETECTOR[x]{state}" },                                                  // 0x19
-    { "FlipDetector", "FLIP_DETECTOR[x]{state}" },                                                    // 0x1A
-    { "PickupDetector", "PICKUP_DETECTOR[x]{state}" },                                                // 0x1B
-    { "StabilityDetector", "STABILITY_DETECTOR[x]{state}" },                                          // 0x1C
-    { "Reserved", "" },                                                                               // 0x1D
-    { "PersonalActivityClassifier", "MOST_LIKELY_STATE[x]{state},CONFIDENCE[uvbfstwrax]{state}" },    // 0x1E
-    { "SleepDetector", "SLEEP_DETECTOR[x]{state}" },                                                  // 0x1F
-    { "TiltDetector", "TILT_DETECTOR[x]{state}" },                                                    // 0x20
-    { "PocketDetector", "POCKET_DETECTOR[x]{state}" },                                                // 0x21
-    { "CircleDetector", "CIRCLE_DETECTOR[x]{state}" },                                                // 0x22
-    { "HeartRateMonitor", "HEART_RATE_MONITOR[x]{?}" },                                               // 0x23
-    { "Reserved", "" },                                                                               // 0x24
-    { "Reserved", "" },                                                                               // 0x25
-    { "Reserved", "" },                                                                               // 0x26
-    { "Reserved", "" },                                                                               // 0x27
-    { "ARVRStabilizedRotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion},ANG_POS_ACCURACY[x]{deg}" },  // 0x28
-    { "ARVRStabilizedGameRotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion}" },                       // 0x29
-    { "GyroIntegratedRV", "ANG_POS_GLOBAL[wxyz]{quaternion},ANG_VEL[xyz]{rad/s}" },                   // 0x2A
-    { "MotionRequest", "MOTION_INTENT[x]{state},MOTION_REQUEST[x]{state}" },                          // 0x2B
-    { "RawOpticalFlow",
-    "MOVED{bool},LASER_ON{bool},LIN_VEL_XY[xy]{ADC},SQUAL,RES[xy],SHUTTER,FRAME_MAX,FRAME_AVG,FRAME_MIN,DT{us},SAMPLE_TIME[x]{us}" },   // 0x2C
-    { "DeadReckoningPose", "LIN_POS_GLOBAL[xyz]{m},ANG_POS_GLOBAL[wxyz]{quaternion},LIN_VEL[xyz]{m/s},ANG_VEL[xyz]{rad/s},SAMPLE_TIME[x]{us}" }, // 0x2D
-    { "WheelEncoder", "DATA_TYPE[x],WHEEL_INDEX[x],DATA[x],SAMPLE_TIME[x]{us}" }, // 0x2E
+        {"Reserved", ""},                                                                // 0x00
+        {"Accelerometer", "LIN_ACC_GRAVITY[xyz]{m/s^2}"},                                // 0x01
+        {"Gyroscope", "ANG_VEL[xyz]{rad/s}"},                                            // 0x02
+        {"MagneticField", "MAG[xyz]{m/s^2}"},                                            // 0x03
+        {"LinearAcceleration", "LIN_ACC[xyz]{m/s^2}"},                                   // 0x04
+        {"RotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion},ANG_POS_ACCURACY[x]{deg}"}, // 0x05
+        {"Gravity", "GRAVITY[xyz]{m/s^2}"},                                              // 0x06
+        {"UncalibratedGyroscope", "ANG_VEL[xyz]{rad/s},BIAS[xyz]{rad/s}"},               // 0x07
+        {"GameRotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion}"},                      // 0x08
+        {"GeomagneticRotationVector",
+         "ANG_POS_GLOBAL[wxyz]{quaternion},ANG_POS_ACCURACY[x]{deg}"},                // 0x09
+        {"Pressure", "PRESSURE[x]{hPa}"},                                             // 0x0A
+        {"AmbientLight", "AMBIENT_LIGHT[x]{lux}"},                                    // 0x0B
+        {"Humidity", "HUMIDITY[x]{%}"},                                               // 0x0C
+        {"Proximity", "PROXIMITY[x]{cm}"},                                            // 0x0D
+        {"Temperature", "TEMPERATURE[x]{degC}"},                                      // 0x0E
+        {"UncalibratedMagField", "MAG_UNCAL[xyz]{m/s^2},MAG_BAIS[xyz]{m/s^2}"},       // 0x0F
+        {"TapDetector", "TAP_DETECTOR[x]{state}"},                                    // 0x10
+        {"StepCounter", "STEPS[x]{steps},STEP_COUNTER_LATENCY[x]{us}"},               // 0x11
+        {"SignificantMotion", "SIGNIFICANT_MOTION[x]{state}"},                        // 0x12
+        {"StabilityClassifier", "STABILITY_CLASSIFIER[x]{state}"},                    // 0x13
+        {"RawAccelerometer", "LIN_ACC_GRAVITY[xyz]{ADC},SAMPLE_TIME[x]{us}"},         // 0x14
+        {"RawGyroscope", "ANG_VEL[xyz]{ADC},TEMPERATURE[x]{ADC},SAMPLE_TIME[x]{us}"}, // 0x15
+        {"RawMagnetometer", "MAG[xyz]{ADC},SAMPLE_TIME[x]{us}"},                      // 0x16
+        {"Reserved", ""},                                                             // 0x17
+        {"StepDetector", "STEP_DETECTOR_LATENCY[x]{us}"},                             // 0x18
+        {"ShakeDetector", "SHAKE_DETECTOR[x]{state}"},                                // 0x19
+        {"FlipDetector", "FLIP_DETECTOR[x]{state}"},                                  // 0x1A
+        {"PickupDetector", "PICKUP_DETECTOR[x]{state}"},                              // 0x1B
+        {"StabilityDetector", "STABILITY_DETECTOR[x]{state}"},                        // 0x1C
+        {"Reserved", ""},                                                             // 0x1D
+        {"PersonalActivityClassifier",
+         "MOST_LIKELY_STATE[x]{state},CONFIDENCE[uvbfstwrax]{state}"}, // 0x1E
+        {"SleepDetector", "SLEEP_DETECTOR[x]{state}"},                 // 0x1F
+        {"TiltDetector", "TILT_DETECTOR[x]{state}"},                   // 0x20
+        {"PocketDetector", "POCKET_DETECTOR[x]{state}"},               // 0x21
+        {"CircleDetector", "CIRCLE_DETECTOR[x]{state}"},               // 0x22
+        {"HeartRateMonitor", "HEART_RATE_MONITOR[x]{?}"},              // 0x23
+        {"Reserved", ""},                                              // 0x24
+        {"Reserved", ""},                                              // 0x25
+        {"Reserved", ""},                                              // 0x26
+        {"Reserved", ""},                                              // 0x27
+        {"ARVRStabilizedRotationVector",
+         "ANG_POS_GLOBAL[wxyz]{quaternion},ANG_POS_ACCURACY[x]{deg}"},                // 0x28
+        {"ARVRStabilizedGameRotationVector", "ANG_POS_GLOBAL[wxyz]{quaternion}"},     // 0x29
+        {"GyroIntegratedRV", "ANG_POS_GLOBAL[wxyz]{quaternion},ANG_VEL[xyz]{rad/s}"}, // 0x2A
+        {"MotionRequest", "MOTION_INTENT[x]{state},MOTION_REQUEST[x]{state}"},        // 0x2B
+        {"RawOpticalFlow",
+         "MOVED{bool},LASER_ON{bool},LIN_VEL_XY[xy]{ADC},SQUAL,RES[xy],SHUTTER,FRAME_MAX,FRAME_AVG,"
+         "FRAME_MIN,DT{us},SAMPLE_TIME[x]{us}"}, // 0x2C
+        {"DeadReckoningPose",
+         "LIN_POS_GLOBAL[xyz]{m},ANG_POS_GLOBAL[wxyz]{quaternion},LIN_VEL[xyz]{m/"
+         "s},ANG_VEL[xyz]{rad/s},SAMPLE_TIME[x]{us}"},                              // 0x2D
+        {"WheelEncoder", "DATA_TYPE[x],WHEEL_INDEX[x],DATA[x],SAMPLE_TIME[x]{us}"}, // 0x2E
 };
 
 static_assert((sizeof(SensorDsfHeader) / sizeof(sensorDsfHeader_s)) == (SH2_MAX_SENSOR_ID + 1),
-    "Const variable size match failed");
+              "Const variable size match failed");
 
-static SampleIdExtender * extenders_[SH2_MAX_SENSOR_ID + 1];
+static SampleIdExtender* extenders_[SH2_MAX_SENSOR_ID + 1];
 
 
 // =================================================================================================
@@ -116,8 +122,7 @@ bool DsfLogger::init(char const* filePath, bool ned) {
         for (int i = 0; i <= SH2_MAX_SENSOR_ID; i++) {
             if (strcmp("", SensorDsfHeader[i].sensorColumns) == 0) {
                 extenders_[i] = nullptr;
-            }
-            else {
+            } else {
                 extenders_[i] = new SampleIdExtender();
             }
         }
@@ -170,7 +175,8 @@ void DsfLogger::logAsyncEvent(sh2_AsyncEvent_t* pEvent, double timestamp) {
                 outFile_ << std::fixed << std::setprecision(9) << timestamp << ", ";
                 outFile_.unsetf(std::ios_base::floatfield);
                 outFile_ << "period(";
-                outFile_ << (pEvent->sh2SensorConfigResp.sensorConfig.reportInterval_us / 1000000.0);
+                outFile_ << (pEvent->sh2SensorConfigResp.sensorConfig.reportInterval_us /
+                             1000000.0);
                 outFile_ << ")\n";
             }
             break;
@@ -205,20 +211,25 @@ void DsfLogger::logProductIds(sh2_ProductIds_t ids) {
                 outFile_ << "!RESET_CAUSE=\"Other\"\n";
                 break;
         }
-        outFile_ << "! PN." << i << "=\""
-            << static_cast<uint32_t>(ids.entry[i].swPartNumber) << " "
-            << static_cast<uint32_t>(ids.entry[i].swVersionMajor) << "."
-            << static_cast<uint32_t>(ids.entry[i].swVersionMinor) << "."
-            << static_cast<uint32_t>(ids.entry[i].swVersionPatch) << "."
-            << static_cast<uint32_t>(ids.entry[i].swBuildNumber) << "\"\n";
+        outFile_ << "! PN." << i << "=\"" << static_cast<uint32_t>(ids.entry[i].swPartNumber) << " "
+                 << static_cast<uint32_t>(ids.entry[i].swVersionMajor) << "."
+                 << static_cast<uint32_t>(ids.entry[i].swVersionMinor) << "."
+                 << static_cast<uint32_t>(ids.entry[i].swVersionPatch) << "."
+                 << static_cast<uint32_t>(ids.entry[i].swBuildNumber) << "\"\n";
     }
 }
 
 // -------------------------------------------------------------------------------------------------
 // DsfLogger::logFrsRecord
 // -------------------------------------------------------------------------------------------------
-void DsfLogger::logFrsRecord(char const* name, uint32_t* buffer, uint16_t words) {
-    outFile_ << "!" << name << "=\"";
+void DsfLogger::logFrsRecord(uint16_t recordId,
+                             char const* name,
+                             uint32_t* buffer,
+                             uint16_t words) {
+    outFile_ << "! frs_" << std::hex << std::setw(4) << std::setfill('0') << recordId << "=[";
+    outFile_ << "\"" << name << "\",";
+    outFile_ << "\"" << std::hex << std::setw(4) << std::setfill('0') << recordId << "\",";
+    outFile_ << "\"";
     for (uint16_t w = 0; w < words; ++w) {
         for (uint8_t b = 0; b < 4; ++b) {
             outFile_ << std::hex << std::setw(2) << std::setfill('0')
@@ -228,13 +239,13 @@ void DsfLogger::logFrsRecord(char const* name, uint32_t* buffer, uint16_t words)
             }
         }
     }
-    outFile_ << std::dec << "\"\n";
+    outFile_ << std::dec << "\"]\n";
 }
 
 // -------------------------------------------------------------------------------------------------
 // DsfLogger::logSensorValue
 // -------------------------------------------------------------------------------------------------
-void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
+void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp, int64_t delay_uS) {
     uint32_t sensorId = pValue->sensorId;
 
     if (!extenders_[sensorId]) {
@@ -243,139 +254,125 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
     }
 
     // Write Sensor Report Header
-    WriteSensorReportHeader(pValue, extenders_[sensorId], timestamp);
+    WriteSensorReportHeader(pValue, extenders_[sensorId], timestamp, delay_uS);
 
     switch (sensorId) {
 
         case SH2_RAW_ACCELEROMETER: {
-            outFile_ << pValue->un.rawAccelerometer.x << ","
-                << pValue->un.rawAccelerometer.y << ","
-                << pValue->un.rawAccelerometer.z << ","
-                << pValue->un.rawAccelerometer.timestamp << "\n";
+            outFile_ << pValue->un.rawAccelerometer.x << "," << pValue->un.rawAccelerometer.y << ","
+                     << pValue->un.rawAccelerometer.z << ","
+                     << pValue->un.rawAccelerometer.timestamp << "\n";
             break;
         }
         case SH2_ACCELEROMETER: {
             if (orientationNed_) {
                 outFile_ << pValue->un.accelerometer.y << "," // ENU -> NED
-                    << pValue->un.accelerometer.x << ","
-                    << -pValue->un.accelerometer.z << "\n";
+                         << pValue->un.accelerometer.x << "," << -pValue->un.accelerometer.z
+                         << "\n";
             } else {
-                outFile_ << pValue->un.accelerometer.x << ","
-                    << pValue->un.accelerometer.y << ","
-                    << pValue->un.accelerometer.z << "\n";
+                outFile_ << pValue->un.accelerometer.x << "," << pValue->un.accelerometer.y << ","
+                         << pValue->un.accelerometer.z << "\n";
             }
             break;
         }
         case SH2_LINEAR_ACCELERATION: {
             if (orientationNed_) {
                 outFile_ << pValue->un.linearAcceleration.y << "," // ENU -> NED
-                    << pValue->un.linearAcceleration.x << ","
-                    << -pValue->un.linearAcceleration.z << "\n";
+                         << pValue->un.linearAcceleration.x << ","
+                         << -pValue->un.linearAcceleration.z << "\n";
             } else {
                 outFile_ << pValue->un.linearAcceleration.x << ","
-                    << pValue->un.linearAcceleration.y << ","
-                    << pValue->un.linearAcceleration.z << "\n";
+                         << pValue->un.linearAcceleration.y << ","
+                         << pValue->un.linearAcceleration.z << "\n";
             }
             break;
         }
         case SH2_GRAVITY: {
             if (orientationNed_) {
                 outFile_ << pValue->un.gravity.y << "," // ENU -> NED
-                    << pValue->un.gravity.x << ","
-                    << -pValue->un.gravity.z << "\n";
+                         << pValue->un.gravity.x << "," << -pValue->un.gravity.z << "\n";
             } else {
-                outFile_ << pValue->un.gravity.x << ","
-                    << pValue->un.gravity.y << ","
-                    << pValue->un.gravity.z << "\n";
+                outFile_ << pValue->un.gravity.x << "," << pValue->un.gravity.y << ","
+                         << pValue->un.gravity.z << "\n";
             }
             break;
         }
         case SH2_RAW_GYROSCOPE: {
-            outFile_ << pValue->un.rawGyroscope.x << ","
-                << pValue->un.rawGyroscope.y << ","
-                << pValue->un.rawGyroscope.z << ","
-                << pValue->un.rawGyroscope.temperature << ","
-                << pValue->un.rawGyroscope.timestamp << "\n";
+            outFile_ << pValue->un.rawGyroscope.x << "," << pValue->un.rawGyroscope.y << ","
+                     << pValue->un.rawGyroscope.z << "," << pValue->un.rawGyroscope.temperature
+                     << "," << pValue->un.rawGyroscope.timestamp << "\n";
             break;
         }
         case SH2_GYROSCOPE_CALIBRATED: {
             if (orientationNed_) {
                 outFile_ << pValue->un.gyroscope.y << "," // ENU -> NED
-                    << pValue->un.gyroscope.x << ","
-                    << -pValue->un.gyroscope.z << "\n";
+                         << pValue->un.gyroscope.x << "," << -pValue->un.gyroscope.z << "\n";
             } else {
-                outFile_ << pValue->un.gyroscope.x << ","
-                    << pValue->un.gyroscope.y << ","
-                    << pValue->un.gyroscope.z << "\n";
+                outFile_ << pValue->un.gyroscope.x << "," << pValue->un.gyroscope.y << ","
+                         << pValue->un.gyroscope.z << "\n";
             }
             break;
         }
         case SH2_GYROSCOPE_UNCALIBRATED: {
             if (orientationNed_) {
                 outFile_ << pValue->un.gyroscopeUncal.y << "," // ENU -> NED
-                    << pValue->un.gyroscopeUncal.x << ","
-                    << -pValue->un.gyroscopeUncal.z << ","
-                    << pValue->un.gyroscopeUncal.biasY << "," // ENU -> NED
-                    << pValue->un.gyroscopeUncal.biasX << ","
-                    << -pValue->un.gyroscopeUncal.biasZ << "\n";
+                         << pValue->un.gyroscopeUncal.x << "," << -pValue->un.gyroscopeUncal.z
+                         << "," << pValue->un.gyroscopeUncal.biasY << "," // ENU -> NED
+                         << pValue->un.gyroscopeUncal.biasX << ","
+                         << -pValue->un.gyroscopeUncal.biasZ << "\n";
             } else {
-                outFile_ << pValue->un.gyroscopeUncal.x << ","
-                    << pValue->un.gyroscopeUncal.y << ","
-                    << pValue->un.gyroscopeUncal.z << ","
-                    << pValue->un.gyroscopeUncal.biasX << ","
-                    << pValue->un.gyroscopeUncal.biasY << ","
-                    << pValue->un.gyroscopeUncal.biasZ << "\n";
+                outFile_ << pValue->un.gyroscopeUncal.x << "," << pValue->un.gyroscopeUncal.y << ","
+                         << pValue->un.gyroscopeUncal.z << "," << pValue->un.gyroscopeUncal.biasX
+                         << "," << pValue->un.gyroscopeUncal.biasY << ","
+                         << pValue->un.gyroscopeUncal.biasZ << "\n";
             }
             break;
         }
         case SH2_RAW_MAGNETOMETER: {
-            outFile_ << pValue->un.rawMagnetometer.x << ","
-                << pValue->un.rawMagnetometer.y << ","
-                << pValue->un.rawMagnetometer.z << ","
-                << pValue->un.rawMagnetometer.timestamp << "\n";
+            outFile_ << pValue->un.rawMagnetometer.x << "," << pValue->un.rawMagnetometer.y << ","
+                     << pValue->un.rawMagnetometer.z << "," << pValue->un.rawMagnetometer.timestamp
+                     << "\n";
             break;
         }
         case SH2_MAGNETIC_FIELD_CALIBRATED: {
             if (orientationNed_) {
                 outFile_ << pValue->un.magneticField.y << "," // ENU -> NED
-                    << pValue->un.magneticField.x << ","
-                    << -pValue->un.magneticField.z << "\n";
+                         << pValue->un.magneticField.x << "," << -pValue->un.magneticField.z
+                         << "\n";
             } else {
-                outFile_ << pValue->un.magneticField.x << ","
-                    << pValue->un.magneticField.y << ","
-                    << pValue->un.magneticField.z << "\n";
+                outFile_ << pValue->un.magneticField.x << "," << pValue->un.magneticField.y << ","
+                         << pValue->un.magneticField.z << "\n";
             }
             break;
         }
         case SH2_MAGNETIC_FIELD_UNCALIBRATED: {
             if (orientationNed_) {
                 outFile_ << pValue->un.magneticFieldUncal.y << "," // ENU -> NED
-                    << pValue->un.magneticFieldUncal.x << ","
-                    << -pValue->un.magneticFieldUncal.z << ","
-                    << pValue->un.magneticFieldUncal.biasY << "," // ENU -> NED
-                    << pValue->un.magneticFieldUncal.biasX << ","
-                    << -pValue->un.magneticFieldUncal.biasZ << "\n";
+                         << pValue->un.magneticFieldUncal.x << ","
+                         << -pValue->un.magneticFieldUncal.z << ","
+                         << pValue->un.magneticFieldUncal.biasY << "," // ENU -> NED
+                         << pValue->un.magneticFieldUncal.biasX << ","
+                         << -pValue->un.magneticFieldUncal.biasZ << "\n";
             } else {
                 outFile_ << pValue->un.magneticFieldUncal.x << ","
-                    << pValue->un.magneticFieldUncal.y << ","
-                    << pValue->un.magneticFieldUncal.z << ","
-                    << pValue->un.magneticFieldUncal.biasX << ","
-                    << pValue->un.magneticFieldUncal.biasY << ","
-                    << pValue->un.magneticFieldUncal.biasZ << "\n";
+                         << pValue->un.magneticFieldUncal.y << ","
+                         << pValue->un.magneticFieldUncal.z << ","
+                         << pValue->un.magneticFieldUncal.biasX << ","
+                         << pValue->un.magneticFieldUncal.biasY << ","
+                         << pValue->un.magneticFieldUncal.biasZ << "\n";
             }
             break;
         }
         case SH2_ROTATION_VECTOR: {
             if (orientationNed_) {
-                outFile_ << pValue->un.rotationVector.real << ","
-                    << pValue->un.rotationVector.j << "," // Convert ENU -> NED
-                    << pValue->un.rotationVector.i << ","
-                    << -pValue->un.rotationVector.k << ",";
+                outFile_ << pValue->un.rotationVector.real << "," << pValue->un.rotationVector.j
+                         << "," // Convert ENU -> NED
+                         << pValue->un.rotationVector.i << "," << -pValue->un.rotationVector.k
+                         << ",";
             } else {
-                outFile_ << pValue->un.rotationVector.real << ","
-                    << pValue->un.rotationVector.i << ","
-                    << pValue->un.rotationVector.j << ","
-                    << pValue->un.rotationVector.k << ",";
+                outFile_ << pValue->un.rotationVector.real << "," << pValue->un.rotationVector.i
+                         << "," << pValue->un.rotationVector.j << "," << pValue->un.rotationVector.k
+                         << ",";
             }
             outFile_ << RadiansToDeg(pValue->un.rotationVector.accuracy) << "\n";
             break;
@@ -383,28 +380,28 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
         case SH2_GAME_ROTATION_VECTOR: {
             if (orientationNed_) {
                 outFile_ << pValue->un.gameRotationVector.real << ","
-                    << pValue->un.gameRotationVector.j << "," // Convert ENU -> NED
-                    << pValue->un.gameRotationVector.i << ","
-                    << -pValue->un.gameRotationVector.k << "\n";
+                         << pValue->un.gameRotationVector.j << "," // Convert ENU -> NED
+                         << pValue->un.gameRotationVector.i << ","
+                         << -pValue->un.gameRotationVector.k << "\n";
             } else {
                 outFile_ << pValue->un.gameRotationVector.real << ","
-                    << pValue->un.gameRotationVector.i << ","
-                    << pValue->un.gameRotationVector.j << ","
-                    << pValue->un.gameRotationVector.k << "\n";
+                         << pValue->un.gameRotationVector.i << ","
+                         << pValue->un.gameRotationVector.j << ","
+                         << pValue->un.gameRotationVector.k << "\n";
             }
             break;
         }
         case SH2_GEOMAGNETIC_ROTATION_VECTOR: {
             if (orientationNed_) {
                 outFile_ << pValue->un.geoMagRotationVector.real << ","
-                    << pValue->un.geoMagRotationVector.j << "," // Convert ENU -> NED
-                    << pValue->un.geoMagRotationVector.i << ","
-                    << -pValue->un.geoMagRotationVector.k << ",";
+                         << pValue->un.geoMagRotationVector.j << "," // Convert ENU -> NED
+                         << pValue->un.geoMagRotationVector.i << ","
+                         << -pValue->un.geoMagRotationVector.k << ",";
             } else {
                 outFile_ << pValue->un.geoMagRotationVector.real << ","
-                    << pValue->un.geoMagRotationVector.i << ","
-                    << pValue->un.geoMagRotationVector.j << ","
-                    << pValue->un.geoMagRotationVector.k << ",";
+                         << pValue->un.geoMagRotationVector.i << ","
+                         << pValue->un.geoMagRotationVector.j << ","
+                         << pValue->un.geoMagRotationVector.k << ",";
             }
             outFile_ << RadiansToDeg(pValue->un.geoMagRotationVector.accuracy) << "\n";
             break;
@@ -447,7 +444,8 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_STABILITY_CLASSIFIER: {
-            outFile_ << static_cast<uint32_t>(pValue->un.stabilityClassifier.classification) << "\n";
+            outFile_ << static_cast<uint32_t>(pValue->un.stabilityClassifier.classification)
+                     << "\n";
             break;
         }
         case SH2_SHAKE_DETECTOR: {
@@ -467,9 +465,12 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             break;
         }
         case SH2_PERSONAL_ACTIVITY_CLASSIFIER: {
-            outFile_ << static_cast<uint32_t>(pValue->un.personalActivityClassifier.mostLikelyState) << ",";
+            outFile_ << static_cast<uint32_t>(pValue->un.personalActivityClassifier.mostLikelyState)
+                     << ",";
             for (int i = 0; i < 10; i++) {
-                outFile_ << static_cast<uint32_t>(pValue->un.personalActivityClassifier.confidence[i]) << ",";
+                outFile_ << static_cast<uint32_t>(
+                                    pValue->un.personalActivityClassifier.confidence[i])
+                         << ",";
             }
             outFile_ << "\n";
             break;
@@ -496,15 +497,14 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
         }
         case SH2_ARVR_STABILIZED_RV: {
             if (orientationNed_) {
-                outFile_ << pValue->un.arvrStabilizedRV.real << ","
-                    << pValue->un.arvrStabilizedRV.j << "," // Convert ENU -> NED
-                    << pValue->un.arvrStabilizedRV.i << ","
-                    << -pValue->un.arvrStabilizedRV.k << ",";
+                outFile_ << pValue->un.arvrStabilizedRV.real << "," << pValue->un.arvrStabilizedRV.j
+                         << "," // Convert ENU -> NED
+                         << pValue->un.arvrStabilizedRV.i << "," << -pValue->un.arvrStabilizedRV.k
+                         << ",";
             } else {
-                outFile_ << pValue->un.arvrStabilizedRV.real << ","
-                    << pValue->un.arvrStabilizedRV.i << ","
-                    << pValue->un.arvrStabilizedRV.j << ","
-                    << pValue->un.arvrStabilizedRV.k << ",";
+                outFile_ << pValue->un.arvrStabilizedRV.real << "," << pValue->un.arvrStabilizedRV.i
+                         << "," << pValue->un.arvrStabilizedRV.j << ","
+                         << pValue->un.arvrStabilizedRV.k << ",";
             }
             outFile_ << RadiansToDeg(pValue->un.arvrStabilizedRV.accuracy) << "\n";
             break;
@@ -512,44 +512,43 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
         case SH2_ARVR_STABILIZED_GRV: {
             if (orientationNed_) {
                 outFile_ << pValue->un.arvrStabilizedGRV.real << ","
-                    << pValue->un.arvrStabilizedGRV.j << "," // Convert ENU -> NED
-                    << pValue->un.arvrStabilizedGRV.i << ","
-                    << -pValue->un.arvrStabilizedGRV.k << "\n";
+                         << pValue->un.arvrStabilizedGRV.j << "," // Convert ENU -> NED
+                         << pValue->un.arvrStabilizedGRV.i << "," << -pValue->un.arvrStabilizedGRV.k
+                         << "\n";
             } else {
                 outFile_ << pValue->un.arvrStabilizedGRV.real << ","
-                    << pValue->un.arvrStabilizedGRV.i << ","
-                    << pValue->un.arvrStabilizedGRV.j << ","
-                    << pValue->un.arvrStabilizedGRV.k << "\n";
+                         << pValue->un.arvrStabilizedGRV.i << "," << pValue->un.arvrStabilizedGRV.j
+                         << "," << pValue->un.arvrStabilizedGRV.k << "\n";
             }
             break;
         }
         case SH2_GYRO_INTEGRATED_RV: {
             if (orientationNed_) {
-                outFile_ << pValue->un.gyroIntegratedRV.real << ","
-                    << pValue->un.gyroIntegratedRV.j << "," // Convert ENU -> NED
-                    << pValue->un.gyroIntegratedRV.i << ","
-                    << -pValue->un.gyroIntegratedRV.k << ","
-                    << pValue->un.gyroIntegratedRV.angVelY << ","
-                    << pValue->un.gyroIntegratedRV.angVelX << ","
-                    << -pValue->un.gyroIntegratedRV.angVelZ << "\n";
+                outFile_ << pValue->un.gyroIntegratedRV.real << "," << pValue->un.gyroIntegratedRV.j
+                         << "," // Convert ENU -> NED
+                         << pValue->un.gyroIntegratedRV.i << "," << -pValue->un.gyroIntegratedRV.k
+                         << "," << pValue->un.gyroIntegratedRV.angVelY << ","
+                         << pValue->un.gyroIntegratedRV.angVelX << ","
+                         << -pValue->un.gyroIntegratedRV.angVelZ << "\n";
             } else {
-                outFile_ << pValue->un.gyroIntegratedRV.real << ","
-                    << pValue->un.gyroIntegratedRV.i << ","
-                    << pValue->un.gyroIntegratedRV.j << ","
-                    << pValue->un.gyroIntegratedRV.k << ","
-                    << pValue->un.gyroIntegratedRV.angVelX << ","
-                    << pValue->un.gyroIntegratedRV.angVelY << ","
-                    << pValue->un.gyroIntegratedRV.angVelZ << "\n";
+                outFile_ << pValue->un.gyroIntegratedRV.real << "," << pValue->un.gyroIntegratedRV.i
+                         << "," << pValue->un.gyroIntegratedRV.j << ","
+                         << pValue->un.gyroIntegratedRV.k << ","
+                         << pValue->un.gyroIntegratedRV.angVelX << ","
+                         << pValue->un.gyroIntegratedRV.angVelY << ","
+                         << pValue->un.gyroIntegratedRV.angVelZ << "\n";
             }
             break;
         }
         case SH2_IZRO_MOTION_REQUEST: {
             outFile_ << static_cast<uint32_t>(pValue->un.izroRequest.intent) << ","
-                << static_cast<uint32_t>(pValue->un.izroRequest.request) << "\n";
+                     << static_cast<uint32_t>(pValue->un.izroRequest.request) << "\n";
             break;
         }
-        case SH2_RAW_OPTICAL_FLOW:{
-            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.dx != 0 || pValue->un.rawOptFlow.dy != 0) << ",";
+        case SH2_RAW_OPTICAL_FLOW: {
+            outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.dx != 0 ||
+                                              pValue->un.rawOptFlow.dy != 0)
+                     << ",";
             outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.laserOn) << ",";
             outFile_ << static_cast<int16_t>(pValue->un.rawOptFlow.dx) << ",";
             outFile_ << static_cast<int16_t>(pValue->un.rawOptFlow.dy) << ",";
@@ -564,7 +563,7 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             outFile_ << static_cast<uint32_t>(pValue->un.rawOptFlow.timestamp) << "\n";
             break;
         }
-        case SH2_DEAD_RECKONING_POSE:{
+        case SH2_DEAD_RECKONING_POSE: {
             // Output is ENU: rearrange if desired
             if (orientationNed_) {
                 outFile_ << pValue->un.deadReckoningPose.linPosY << ",";
@@ -604,7 +603,7 @@ void DsfLogger::logSensorValue(sh2_SensorValue_t* pValue, double timestamp) {
             outFile_ << pValue->un.deadReckoningPose.timestamp << "\n";
             break;
         }
-        case SH2_WHEEL_ENCODER:{
+        case SH2_WHEEL_ENCODER: {
             outFile_ << static_cast<uint16_t>(pValue->un.wheelEncoder.dataType) << ",";
             outFile_ << static_cast<uint16_t>(pValue->un.wheelEncoder.wheelIndex) << ",";
             outFile_ << static_cast<uint16_t>(pValue->un.wheelEncoder.data) << ",";
@@ -627,19 +626,18 @@ void DsfLogger::WriteChannelDefinition(uint8_t sensorId, bool orientation) {
     char const* fieldNames = SensorDsfHeader[sensorId].sensorColumns;
     char const* name = SensorDsfHeader[sensorId].name;
 
-    outFile_ << "+" << static_cast<int32_t>(sensorId) 
-        << " TIME{s},SYSTEM_TIME{s},SAMPLE_ID[x]{samples},STATUS[x]{state}," 
-        << fieldNames << "\n";
+    outFile_ << "+" << static_cast<int32_t>(sensorId)
+             << " TIME{s},SYSTEM_TIME{s},SAMPLE_ID[x]{samples},STATUS[x]{state}," << fieldNames
+             << "\n";
 
     if (orientation) {
         if (sensorId != SH2_RAW_ACCELEROMETER && sensorId != SH2_RAW_GYROSCOPE &&
-            sensorId != SH2_RAW_MAGNETOMETER && sensorId != SH2_RAW_OPTICAL_FLOW 
-            && sensorId != SH2_WHEEL_ENCODER) {
+            sensorId != SH2_RAW_MAGNETOMETER && sensorId != SH2_RAW_OPTICAL_FLOW &&
+            sensorId != SH2_WHEEL_ENCODER) {
             outFile_ << "!" << static_cast<int32_t>(sensorId) << " coordinate_system=";
             if (orientationNed_) {
                 outFile_ << "\"NED\"\n";
-            }
-            else {
+            } else {
                 outFile_ << "\"ENU\"\n";
             }
         }
@@ -650,7 +648,11 @@ void DsfLogger::WriteChannelDefinition(uint8_t sensorId, bool orientation) {
 // -------------------------------------------------------------------------------------------------
 // DsfLogger::WriteSensorReportHeader
 // -------------------------------------------------------------------------------------------------
-void DsfLogger::WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExtender* extender, double timestamp) {
+void DsfLogger::WriteSensorReportHeader(sh2_SensorValue_t* pValue,
+                                        SampleIdExtender* extender,
+                                        double timestamp,
+                                        int64_t delay_uS) {
+    static double posixOffset_ = 0;
     if (extender->isEmpty()) {
         WriteChannelDefinition(pValue->sensorId);
     }
@@ -677,14 +679,18 @@ void DsfLogger::WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExten
 #else
         struct timespec tp;
         clock_gettime(CLOCK_REALTIME, &tp);
-        double posix_time = tp.tv_sec + tp.tv_nsec*1e-9;
+        double posix_time = tp.tv_sec + tp.tv_nsec * 1e-9;
         posixOffset_ = posix_time - timestamp;
 #endif
+        outFile_ << "! posix_offset=" << std::fixed << std::setprecision(9) << posixOffset_
+                 << std::endl;
     }
 
     outFile_ << "." << static_cast<uint32_t>(pValue->sensorId) << " ";
+    // First column: delay-corrected timestamp
     outFile_ << std::fixed << std::setprecision(9) << timestamp << ",";
-    outFile_ << std::fixed << std::setprecision(9) << (timestamp + posixOffset_) << ",";
+    // Second column: Host arrival time (delay term removed).
+    outFile_ << std::fixed << std::setprecision(9) << (timestamp - (delay_uS * 1e-6)) << ",";
     outFile_.unsetf(std::ios_base::floatfield);
     outFile_ << extender->extend(pValue->sequence) << ",";
     outFile_ << static_cast<uint32_t>(pValue->status) << ",";

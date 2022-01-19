@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-21 CEVA, Inc.
+ * Copyright 2018-2022 CEVA, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License and
@@ -21,14 +21,15 @@ extern "C" {
 #include "sh2_hal.h"
 }
 
+#include "Logger.h"
 #include "LoggerApp.h"
 #include "LoggerUtil.h"
-#include "Logger.h"
 
 #include "math.h"
-#include <string.h>
+#include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <string.h>
 #include <string>
 
 
@@ -48,6 +49,8 @@ enum class State_e {
 #define RESET_TIMEOUT_ 1000
 #endif
 
+#define FLUSH_TIMEOUT 0.1f
+
 // =================================================================================================
 // DATA TYPES
 // =================================================================================================
@@ -56,15 +59,18 @@ enum class State_e {
 // LOCAL VARIABLES
 // =================================================================================================
 static Logger* logger_;
+
+static WheelSource* wheelSource_;
+
 static State_e state_ = State_e::Idle;
 
 // Sensor Sample Timestamp
-static bool useSampleTime_ = false;
 static double firstSampleTime_us_ = 0;
 static double currSampleTime_us_ = 0;
 static double lastSampleTime_us_ = 0;
 
 static uint64_t sensorEventsReceived_ = 0;
+static uint64_t lastSensorEventsReceived_ = 0;
 
 static uint64_t shtpErrors_ = 0;
 
@@ -97,7 +103,7 @@ void myEventCallback(void* cookie, sh2_AsyncEvent_t* pEvent) {
     // Report SHTP errors
     if (pEvent->eventId == SH2_SHTP_EVENT) {
         shtpErrors_ += 1;
-        
+
         // With latest SH2 implementation, one SHTP error,
         // for discarded advertisements, is normal.
         if (shtpErrors_ > 1) {
@@ -113,47 +119,41 @@ void myEventCallback(void* cookie, sh2_AsyncEvent_t* pEvent) {
 // mySensorCallback
 // -------------------------------------------------------------------------------------------------
 void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
+    static std::chrono::time_point<std::chrono::steady_clock> t0 = std::chrono::steady_clock::now();
+    static bool ready = false;
     sh2_SensorValue_t value;
     int rc = SH2_OK;
 
     rc = sh2_decodeSensorEvent(&value, pEvent);
+    if (!ready) {
+        std::chrono::duration<double> dt = std::chrono::steady_clock::now() - t0;
+        if (dt.count() > FLUSH_TIMEOUT) {
+            // Initial raw data samples may arrive out-of-order which
+            // can result in invalid timestamps assignment.
+            ready = true;
+        } else {
+            return;
+        }
+    }
     if (rc != SH2_OK) {
         return;
     }
 
-    if (useSampleTime_) {
-        switch (value.sensorId) {
-            case SH2_RAW_ACCELEROMETER:
-                currSampleTime_us_ = value.un.rawAccelerometer.timestamp * 1e-6;
-                lastSampleTime_us_ = currSampleTime_us_;
-                break;
-            case SH2_RAW_GYROSCOPE:
-                currSampleTime_us_ = value.un.rawGyroscope.timestamp * 1e-6;
-                lastSampleTime_us_ = currSampleTime_us_;
-                break;
-            case SH2_RAW_MAGNETOMETER:
-                currSampleTime_us_ = value.un.rawMagnetometer.timestamp * 1e-6;
-                lastSampleTime_us_ = currSampleTime_us_;
-                break;
-            case SH2_RAW_OPTICAL_FLOW:
-                currSampleTime_us_ = value.un.rawOptFlow.timestamp * 1e-6;
-                lastSampleTime_us_ = currSampleTime_us_;
-                break;
-            default:
-                currSampleTime_us_ = lastSampleTime_us_;
-                break;
-        }
-    } else {
-        currSampleTime_us_ = value.timestamp * 1e-6;
-    }
+    // This is the delay-compensated timestamp (host's best estimate of
+    // measurement time)
+    currSampleTime_us_ = value.timestamp * 1e-6;
 
     if (firstSampleTime_us_ == 0) {
         firstSampleTime_us_ = currSampleTime_us_;
     }
     ++sensorEventsReceived_;
 
+    if (wheelSource_ != nullptr) {
+        wheelSource_->reportModuleTime(&value, pEvent);
+    }
+
     // Log sensor data
-    logger_->logSensorValue(&value, currSampleTime_us_);
+    logger_->logSensorValue(&value, currSampleTime_us_, pEvent->delay_uS);
 }
 
 
@@ -163,10 +163,14 @@ void mySensorCallback(void* cookie, sh2_SensorEvent_t* pEvent) {
 // -------------------------------------------------------------------------------------------------
 // LoggerApp::init
 // -------------------------------------------------------------------------------------------------
-int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
+int LoggerApp::init(appConfig_s* appConfig,
+                    sh2_Hal_t* pHal,
+                    Logger* logger,
+                    WheelSource* wheelSource) {
     int status;
 
     logger_ = logger;
+    wheelSource_ = wheelSource;
     sh2Hal_ = pHal;
 
     // ---------------------------------------------------------------------------------------------
@@ -196,7 +200,7 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
     // ---------------------------------------------------------------------------------------------
     if (appConfig->clearDcd || appConfig->clearOfCal) {
         bool clearDcd = false;
-        
+
         if (appConfig->clearOfCal) {
             std::cout << "INFO: Clear optical flow cal\n";
             uint32_t dummy = 0;
@@ -220,7 +224,6 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
         } else {
             sh2_reinitialize();
         }
-            
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -229,7 +232,7 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
     std::cout << "INFO: Get Product IDs\n";
     sh2_ProductIds_t productIds;
     status = sh2_getProdIds(&productIds);
-	if (status != SH2_OK) {
+    if (status != SH2_OK) {
         std::cout << "ERROR: Failed to get product IDs\n";
         return -1;
     }
@@ -274,17 +277,14 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
     // Enable Sensors
     std::cout << "\nINFO: Enable Sensors\n";
     sh2_SensorConfig_t config;
-    for (sensorList_t::iterator it = pSensorsToEnable_->begin(); it != pSensorsToEnable_->end(); ++it) {
+    for (sensorList_t::iterator it = pSensorsToEnable_->begin(); it != pSensorsToEnable_->end();
+         ++it) {
         GetSensorConfiguration(it->sensorId, &config);
         config.reportInterval_us = it->reportInterval_us;
         config.sensorSpecific = it->sensorSpecific;
         config.sniffEnabled = it->sniffEnabled;
 
         sh2_setSensorConfig(it->sensorId, &config);
-
-        if (appConfig->useRawSampleTime && IsRawSensor(it->sensorId)) {
-            useSampleTime_ = true;
-        }
     }
 
     // Initialization Process complete
@@ -301,6 +301,10 @@ int LoggerApp::init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger) {
 int LoggerApp::service() {
 
     ReportProgress();
+
+    if (wheelSource_ != nullptr) {
+        wheelSource_->service();
+    }
 
     sh2_service();
 
@@ -319,8 +323,7 @@ int LoggerApp::finish() {
     sh2_SensorConfig_t config;
     memset(&config, 0, sizeof(config));
     config.reportInterval_us = 0;
-    for (sensorList_t::iterator it = pSensorsToEnable_->begin();
-         it != pSensorsToEnable_->end();
+    for (sensorList_t::iterator it = pSensorsToEnable_->begin(); it != pSensorsToEnable_->end();
          ++it) {
         sh2_setSensorConfig(it->sensorId, &config);
     }
@@ -331,8 +334,8 @@ int LoggerApp::finish() {
     std::cout << "  Done." << std::endl;
 
     std::cout << "INFO: Closing the SensorHub session" << std::endl;
-    sh2_close();        // Close SH2 driver
-    logger_->finish();  // Close (DSF) Logger instance
+    sh2_close();       // Close SH2 driver
+    logger_->finish(); // Close (DSF) Logger instance
 
     std::cout << "INFO: Shutdown complete" << std::endl;
     return 1;
@@ -345,18 +348,6 @@ void LoggerApp::GetSensorConfiguration(sh2_SensorId_t sensorId, sh2_SensorConfig
     memcpy(pConfig, LoggerUtil::SensorSpec[sensorId].config, sizeof(sh2_SensorConfig_t));
 }
 
-// -------------------------------------------------------------------------------------------------
-// LoggerApp::IsRawSensor
-// -------------------------------------------------------------------------------------------------
-bool LoggerApp::IsRawSensor(sh2_SensorId_t sensorId) {
-    if (sensorId == SH2_RAW_ACCELEROMETER || sensorId == SH2_RAW_GYROSCOPE ||
-        sensorId == SH2_RAW_MAGNETOMETER) {
-        return true;
-    }
-    else {
-        return false;
-    }
-}
 
 // -------------------------------------------------------------------------------------------------
 // LoggerApp::ReportProgress
@@ -367,20 +358,24 @@ void LoggerApp::ReportProgress() {
     currSysTime_us = sh2Hal_->getTimeUs(sh2Hal_);
 
     if (currSysTime_us - lastReportTime_us_ >= 1000000) {
-        lastReportTime_us_ = currSysTime_us;
 
         double deltaT = currSampleTime_us_ - firstSampleTime_us_;
         int32_t h = static_cast<int32_t>(floor(deltaT / 60.0 / 60.0));
         int32_t m = static_cast<int32_t>(floor((deltaT - h * 60 * 60) / 60.0));
         double s = deltaT - h * 60 * 60 - m * 60;
+        double last_window = (currSysTime_us - lastReportTime_us_) * 1e-6;
 
         if (deltaT > 0) {
             std::cout << "Samples: " << std::setfill(' ') << std::setw(10) << sensorEventsReceived_
                       << " Duration: " << h << ":" << std::setw(2) << std::setfill('0') << m << ":"
-                      << std::setprecision(2) << s << " "
+                      << std::setw(2) << std::setfill('0') << int(s) << " "
                       << " Rate: " << std::fixed << std::setprecision(2)
-                      << sensorEventsReceived_ / deltaT << " Samples per second" << std::endl;
+                      << sensorEventsReceived_ / deltaT << " ("
+                      << (sensorEventsReceived_ - lastSensorEventsReceived_) / last_window
+                      << ") Samples per second" << std::endl;
         }
+        lastReportTime_us_ = currSysTime_us;
+        lastSensorEventsReceived_ = sensorEventsReceived_;
     }
 }
 
@@ -398,7 +393,7 @@ int LoggerApp::LogFrsRecord(uint16_t recordId, char const* name) {
     }
 
     if (words > 0) {
-        logger_->logFrsRecord(name, buffer, words);
+        logger_->logFrsRecord(recordId, name, buffer, words);
     }
     return words;
 }

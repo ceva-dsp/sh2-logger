@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-21 CEVA, Inc.
+ * Copyright 2018-2022 CEVA, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License and
@@ -20,7 +20,7 @@
 #include <list>
 #include <stdint.h>
 extern "C" {
-    #include "sh2_hal.h"
+#include "sh2_hal.h"
 }
 
 // =================================================================================================
@@ -31,7 +31,8 @@ extern "C" {
 // =================================================================================================
 // DATA TYPES
 // =================================================================================================
-class Logger;
+#include "Logger.h"
+#include "WheelSource.h"
 
 // =================================================================================================
 // CLASS DEFINITON - LoggerApp
@@ -49,9 +50,14 @@ public:
         uint32_t sensorSpecific;
         uint32_t sniffEnabled;
 
-        bool operator<(SensorFeatureSet_s const &other) { return sensorId < other.sensorId; }
-        bool operator==(SensorFeatureSet_s const &other) { return sensorId == other.sensorId; }
-        SensorFeatureSet_s():reportInterval_us(0),sensorSpecific(0),sniffEnabled(0){}
+        bool operator<(SensorFeatureSet_s const& other) {
+            return sensorId < other.sensorId;
+        }
+        bool operator==(SensorFeatureSet_s const& other) {
+            return sensorId == other.sensorId;
+        }
+        SensorFeatureSet_s() : reportInterval_us(0), sensorSpecific(0), sniffEnabled(0) {
+        }
     };
     typedef std::list<SensorFeatureSet_s> sensorList_t;
 
@@ -63,8 +69,7 @@ public:
         bool clearOfCal = false;
         bool dcdAutoSave = false;
         bool orientationNed = true;
-        bool useRawSampleTime = false;
-        sensorList_t * pSensorsToEnable = 0;
+        sensorList_t* pSensorsToEnable = 0;
         int deviceNumber = 0;
         char deviceName[1024] = "";
     };
@@ -72,7 +77,10 @@ public:
     // ---------------------------------------------------------------------------------------------
     // PUBLIC METHODS
     // ---------------------------------------------------------------------------------------------
-    int init(appConfig_s* appConfig, sh2_Hal_t *pHal, Logger* logger);
+    int init(appConfig_s* appConfig,
+             sh2_Hal_t* pHal,
+             Logger* logger,
+             WheelSource* wheelSource = nullptr);
 
     int service();
 
@@ -82,14 +90,13 @@ private:
     // ---------------------------------------------------------------------------------------------
     // VARIABLES
     // ---------------------------------------------------------------------------------------------
-    sensorList_t * pSensorsToEnable_;
+    sensorList_t* pSensorsToEnable_;
     uint64_t lastReportTime_us_;
 
     // ---------------------------------------------------------------------------------------------
     // PRIVATE METHODS
     // ---------------------------------------------------------------------------------------------
     void GetSensorConfiguration(sh2_SensorId_t sensorId, sh2_SensorConfig_t* pConfig);
-    bool IsRawSensor(sh2_SensorId_t sensorId);
     void ReportProgress();
 
     int LogFrsRecord(uint16_t recordId, char const* name);

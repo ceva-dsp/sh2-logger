@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-21 CEVA, Inc.
+ * Copyright 2018-2022 CEVA, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License and
@@ -23,8 +23,8 @@ extern "C" {
 }
 
 #include <fstream>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 // =================================================================================================
 // CLASS DEFINITON
@@ -41,8 +41,9 @@ public:
     virtual void logAsyncEvent(sh2_AsyncEvent_t* pEvent, double timestamp) = 0;
 
     virtual void logProductIds(sh2_ProductIds_t ids) = 0;
-    virtual void logFrsRecord(char const* name, uint32_t* buffer, uint16_t words) = 0;
-    virtual void logSensorValue(sh2_SensorValue_t* pValue, double timestamp) = 0;
+    virtual void
+    logFrsRecord(uint16_t recordId, char const* name, uint32_t* buffer, uint16_t words) = 0;
+    virtual void logSensorValue(sh2_SensorValue_t* pValue, double timestamp, int64_t delay_uS) = 0;
 
 protected:
     // ---------------------------------------------------------------------------------------------

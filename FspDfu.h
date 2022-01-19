@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 CEVA, Inc.
+ * Copyright 2021-2022 CEVA, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License and
@@ -37,7 +37,7 @@ enum DfuState_e {
 };
 
 // DFU State machine Action function
-typedef DfuState_e (FspDfu::* DfuAction_t)(uint8_t *payload, uint16_t len);
+typedef DfuState_e (FspDfu::*DfuAction_t)(uint8_t* payload, uint16_t len);
 
 // DFU State machine transition
 struct DfuTransition_s {
@@ -46,53 +46,53 @@ struct DfuTransition_s {
     DfuAction_t action;
 };
 
-static void hdlr(void *cookie, uint8_t *payload, uint16_t len, uint32_t timestamp);
+static void hdlr(void* cookie, uint8_t* payload, uint16_t len, uint32_t timestamp);
 
 // DFU Process for FSP200 and similar modules
 class FspDfu {
-    friend void hdlr(void *cookie, uint8_t *payload, uint16_t len, uint32_t timestamp);
+    friend void hdlr(void* cookie, uint8_t* payload, uint16_t len, uint32_t timestamp);
 
-    
-  private:
+
+private:
     static const DfuTransition_s dfuStateTransition[];
 
-  private:
+private:
     // Private Data
-    sh2_Hal_t *m_pHal;
-    void *m_pShtp;
+    sh2_Hal_t* m_pHal;
+    void* m_pShtp;
     int m_status;
     bool m_firmwareOpened;
-    Firmware *m_firmware;
+    Firmware* m_firmware;
     uint32_t m_appLen;
 
     uint16_t m_wordOffset;
     uint8_t m_writeLen;
-    
+
     uint32_t m_ignoredResponses;
     DfuState_e m_state;
-    
-  public:
+
+public:
     // Constructor
     FspDfu();
 
-  private:
+private:
     // Private methods
     void requestUpgrade();
-    DfuState_e handleInitStatus(uint8_t *payload, uint16_t len);
+    DfuState_e handleInitStatus(uint8_t* payload, uint16_t len);
     void requestWrite();
-    DfuState_e handleModeResponse(uint8_t *payload, uint16_t len);
-    DfuState_e handleWriteResponse(uint8_t *payload, uint16_t len);
+    DfuState_e handleModeResponse(uint8_t* payload, uint16_t len);
+    DfuState_e handleWriteResponse(uint8_t* payload, uint16_t len);
     void requestLaunch();
-    DfuState_e handleFinalStatus(uint8_t *payload, uint16_t len);
-    DfuState_e handleLaunchResp(uint8_t *payload, uint16_t len);
-    const DfuTransition_s *findTransition(DfuState_e state, uint8_t reportId);
+    DfuState_e handleFinalStatus(uint8_t* payload, uint16_t len);
+    DfuState_e handleLaunchResp(uint8_t* payload, uint16_t len);
+    const DfuTransition_s* findTransition(DfuState_e state, uint8_t reportId);
 
 
     void initState();
     void openFirmware();
-    void bootloader_ctrl_hdlr(uint8_t *payload, uint16_t len, uint32_t timestamp);
+    void bootloader_ctrl_hdlr(uint8_t* payload, uint16_t len, uint32_t timestamp);
 
-  public:
+public:
     // Run DFU Process
-    bool run(sh2_Hal_t *pHal, Firmware *firmware);
+    bool run(sh2_Hal_t* pHal, Firmware* firmware);
 };

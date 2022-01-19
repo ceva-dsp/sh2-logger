@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-21 CEVA, Inc.
+ * Copyright 2015-2022 CEVA, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License and
@@ -16,9 +16,8 @@
  */
 
 
-// #include <stdio.h>
-#include <string.h>
 #include <iostream>
+#include <string.h>
 
 #include "BnoDfu.h"
 #include "Firmware.h"
@@ -278,5 +277,4 @@ close_and_return:
 end:
     // return true on success
     return (status == SH2_OK);
-    ;
 }

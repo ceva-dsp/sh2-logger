@@ -1,8 +1,8 @@
 /*
- * Copyright 2021 CEVA, Inc.
+ * Copyright 2021-2022 CEVA, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License and 
+ * you may not use this file except in compliance with the License and
  * any applicable agreements you may have with CEVA, Inc.
  * You may obtain a copy of the License at
  *
@@ -25,10 +25,14 @@
  *
  */
 
+// Suppress warning about fopen and strcpy safety under MSVC
+#ifdef _MSC_VER
+#ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
+#endif
+#endif
 
 #include "HcBinFile.h"
-
 #include <stdio.h>
 
 extern "C" {
@@ -39,9 +43,9 @@ extern "C" {
 #define HCBIN_FF_VER (4)
 #define HCBIN_INIT_CRC (0xFFFFFFFF)
 
+
 // Constructor
-HcBinFile::HcBinFile(std::string filename)
-{
+HcBinFile::HcBinFile(std::string filename) {
     m_filename = filename;
     m_open = false;
     m_crc32 = 0;
@@ -49,8 +53,7 @@ HcBinFile::HcBinFile(std::string filename)
 }
 
 // Open file
-int HcBinFile::open()
-{
+int HcBinFile::open() {
     int status = SH2_OK;
 
     uint32_t id = 0;
@@ -60,7 +63,7 @@ int HcBinFile::open()
     long int pos = 0;
     uint32_t computed_crc = 0;
     uint32_t stored_crc = 0;
-    
+
 
     if (m_open) {
         // Should not open the file while already open.
@@ -82,10 +85,10 @@ int HcBinFile::open()
         status = SH2_ERR_BAD_PARAM;
         goto cleanup;
     }
-    
+
     // Read into internal data structures
     // (on error, set status, goto cleanup so file will be closed)
-    
+
     // read Id
     status = read32be(infile, &id);
     if (status != SH2_OK) {
@@ -147,7 +150,8 @@ int HcBinFile::open()
     }
 
     // Read payload data
-    m_appDataLen = sz - offset - 4;  // app data len = file len - app data offset - len of final CRC32.
+    m_appDataLen =
+            sz - offset - 4; // app data len = file len - app data offset - len of final CRC32.
     status = readPayload(infile);
     if (status != SH2_OK) {
         // Something went wrong with payload
@@ -157,15 +161,15 @@ int HcBinFile::open()
     // Read CRC
     computed_crc = ~m_crc32;
     status = read32be(infile, &stored_crc);
-        if (status != SH2_OK) {
-            goto cleanup;
-        }
+    if (status != SH2_OK) {
+        goto cleanup;
+    }
     if (stored_crc != computed_crc) {
         // CRC error on file contents
         status = SH2_ERR_BAD_PARAM;
         goto cleanup;
     }
-  
+
     // No error, set open flag to true
     status = SH2_OK;
     m_open = true;
@@ -178,7 +182,7 @@ int HcBinFile::open()
     // Successful return.
     return SH2_OK;
 
-cleanup:    
+cleanup:
     close();
     if (infile != 0) {
         fclose(infile);
@@ -195,13 +199,13 @@ int HcBinFile::close() {
     }
 
     // Clear metadata entries
-    for (MetadataKV_s *kv : m_metadata) {
+    for (MetadataKV_s* kv : m_metadata) {
         delete kv;
     }
     m_metadata.clear();
 
     m_open = false;
-    
+
     return 0;
 }
 
@@ -209,8 +213,8 @@ const char* HcBinFile::getMeta(const char* key) {
     if (!m_open) {
         return NULL;
     }
-    
-    for (MetadataKV_s *kv : m_metadata) {
+
+    for (MetadataKV_s* kv : m_metadata) {
         if (kv->key == key) {
             // Found the requested key
             return kv->value.c_str();
@@ -225,7 +229,7 @@ uint32_t HcBinFile::getAppLen() {
     if (!m_open) {
         return SH2_ERR;
     }
-    
+
     return m_appDataLen;
 }
 
@@ -242,18 +246,18 @@ int HcBinFile::getAppData(uint8_t* packet, uint32_t offset, uint32_t len) {
     if (!m_open) {
         return SH2_ERR;
     }
-    if (offset+len > m_appDataLen) {
+    if (offset + len > m_appDataLen) {
         return SH2_ERR_BAD_PARAM;
     }
 
     for (uint32_t copied = 0; copied < len; copied++) {
-        packet[copied] = m_appData[offset+copied];
+        packet[copied] = m_appData[offset + copied];
     }
 
     return SH2_OK;
 }
 
-int HcBinFile::read32be(FILE * infile, uint32_t *pData) {
+int HcBinFile::read32be(FILE* infile, uint32_t* pData) {
     uint32_t retval = 0;
 
     for (int n = 0; n < 4; n++) {
@@ -275,12 +279,10 @@ int HcBinFile::read32be(FILE * infile, uint32_t *pData) {
     return SH2_OK;
 }
 
-int HcBinFile::readMetadata(FILE * infile, long int offset) {
+int HcBinFile::readMetadata(FILE* infile, long int offset) {
     std::string key;
     std::string value;
-    enum class ParseState {
-        KEY, SEP, VALUE, EOL
-    } state = ParseState::KEY;
+    enum class ParseState { KEY, SEP, VALUE, EOL } state = ParseState::KEY;
 
     long int pos = ftell(infile);
     while (pos < offset) {
@@ -294,10 +296,9 @@ int HcBinFile::readMetadata(FILE * infile, long int offset) {
             if (c == ':') {
                 // key ends
                 state = ParseState::SEP;
-            }
-            else {
+            } else {
                 // add c to key
-                key.append(1,c);
+                key.append(1, c);
             }
         } else if (state == ParseState::SEP) {
             if (c == ' ') {
@@ -310,19 +311,17 @@ int HcBinFile::readMetadata(FILE * infile, long int offset) {
                 state = ParseState::EOL;
 
                 // store key/value pair
-                MetadataKV_s *kv = new MetadataKV_s();
+                MetadataKV_s* kv = new MetadataKV_s();
                 kv->key = key;
                 kv->value = value;
                 m_metadata.push_back(kv);
                 key.clear();
                 value.clear();
-            }
-            else {
+            } else {
                 // add c to value
-                value.append(1,c);
+                value.append(1, c);
             }
-        }
-        else {
+        } else {
             // in end of line
             if ((c != '\n') && (c != '\r') && (c != '\0')) {
                 state = ParseState::KEY;
@@ -340,7 +339,7 @@ int HcBinFile::readMetadata(FILE * infile, long int offset) {
     return SH2_OK;
 }
 
-int HcBinFile::readPayload(FILE *infile) {
+int HcBinFile::readPayload(FILE* infile) {
     // Allocate appdata
     m_appData = new uint8_t[m_appDataLen];
     if (m_appData == 0) {
@@ -360,14 +359,12 @@ int HcBinFile::readPayload(FILE *infile) {
 
         // pack into 32-bit retval, big endian style
         m_appData[n] = (uint8_t)c;
-
     }
 
     return SH2_OK;
 }
 
-void HcBinFile::updateCrc32(uint8_t c)
-{
+void HcBinFile::updateCrc32(uint8_t c) {
     for (int n = 0; n < 8; n++) {
         uint32_t b = (c ^ m_crc32) & 1;
         m_crc32 >>= 1;

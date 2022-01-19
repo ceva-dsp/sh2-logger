@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 CEVA, Inc.
+ * Copyright 2021-2022 CEVA, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License and
@@ -27,24 +27,24 @@ class Firmware;
 
 // DFU Process for BNO08x and related modules
 class BnoDfu {
-  private:
+private:
     // Private Data
-    sh2_Hal_t *pHal;
+    sh2_Hal_t* pHal;
     uint8_t dfuBuff[MAX_PACKET_LEN + 2];
-    
-  public:
+
+public:
     // Constructor
     BnoDfu();
 
-  private:
+private:
     // Private methods
     int dfuSend(uint8_t* pData, uint32_t len);
     int sendAppSize(uint32_t appSize);
     int sendPktSize(uint8_t packetLen);
     int sendPkt(uint8_t* pData, uint32_t len);
-    
-  public:
+
+public:
     // Public API
     // Run DFU Process
-    bool run(sh2_Hal_t *pHal, Firmware *firmware);
+    bool run(sh2_Hal_t* pHal, Firmware* firmware);
 };

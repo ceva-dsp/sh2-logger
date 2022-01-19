@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-21 CEVA, Inc.
+ * Copyright 2018-2022 CEVA, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License and
@@ -20,8 +20,8 @@
 #include "Logger.h"
 
 #include <fstream>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 // =================================================================================================
 // CLASS DEFINITON - SampleIdExtender
@@ -56,7 +56,7 @@ private:
 // =================================================================================================
 class DsfLogger : public Logger {
 public:
-    DsfLogger():posixOffset_(0){};
+    DsfLogger(){};
     virtual ~DsfLogger(){};
 
     virtual bool init(char const* filePath, bool ned);
@@ -66,19 +66,22 @@ public:
     virtual void logAsyncEvent(sh2_AsyncEvent_t* pEvent, double timestamp);
 
     virtual void logProductIds(sh2_ProductIds_t ids);
-    virtual void logFrsRecord(char const* name, uint32_t* buffer, uint16_t words);
-    virtual void logSensorValue(sh2_SensorValue_t* pValue, double timestamp);
+    virtual void
+    logFrsRecord(uint16_t recordId, char const* name, uint32_t* buffer, uint16_t words);
+    virtual void logSensorValue(sh2_SensorValue_t* pValue, double timestamp, int64_t delay_uS);
 
 private:
     // ---------------------------------------------------------------------------------------------
     // VARIABLES
     // ---------------------------------------------------------------------------------------------
     std::ofstream outFile_;
-    double posixOffset_;
 
     // ---------------------------------------------------------------------------------------------
     // PRIVATE METHODS
     // ---------------------------------------------------------------------------------------------
     void WriteChannelDefinition(uint8_t sensorId, bool orientation = true);
-    void WriteSensorReportHeader(sh2_SensorValue_t* pValue, SampleIdExtender* extender, double timestamp);
+    void WriteSensorReportHeader(sh2_SensorValue_t* pValue,
+                                 SampleIdExtender* extender,
+                                 double timestamp,
+                                 int64_t delay_uS);
 };

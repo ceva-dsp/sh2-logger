@@ -2,9 +2,7 @@
     "calEnable": "0x00",
     "clearDcd": false,
     "dcdAutoSave": false,
-    "deviceNumber": 0,
     "orientation": "ned",
-    "outDsfFile": "out.dsf",
     "sensorList": {
         "Rotation Vector": 10000,
         "Accelerometer": 10000,

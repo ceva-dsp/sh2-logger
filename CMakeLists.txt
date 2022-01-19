@@ -1,3 +1,18 @@
+# Copyright 2018-22 CEVA, Inc.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License and
+# any applicable agreements you may have with CEVA, Inc.
+# You may obtain a copy of the License at
+# 
+#   http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 cmake_minimum_required(VERSION 3.4)
 project(sh2_logger)
 
@@ -12,9 +27,9 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/tclap/include")
 
 
 if(WIN32)
-  set(BNO_DFU_HAL bno_dfu_hal_Win.c)
+  set(BNO_DFU_HAL hal/bno_dfu_hal_Win.c)
 else()
-  set(BNO_DFU_HAL bno_dfu_hal_Linux.c)
+  set(BNO_DFU_HAL hal/bno_dfu_hal_Linux.c)
 endif()
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
@@ -30,18 +45,16 @@ add_executable(sh2_logger
     FspDfu.cpp
     BnoDfu.cpp
     hal/ftdi_hal.c
-    hal/${BNO_DFU_HAL}
+    ${BNO_DFU_HAL}
     HcBinFile.cpp
     sh2/sh2.c
     sh2/sh2_SensorValue.c
     sh2/sh2_util.c
     sh2/shtp.c
+    WheelSource.cpp
+    FileWheelSource.cpp
     )
 
-# # Should be possible to group the libraries under directories like
-#   lib/x64 and lib/Win32 and some combination of
-#   CMAKE_PREFIX_PATH/CMAKE_LIBRARY_PATH
-# find_library(FTD2XX_LIB ftd2xx ${CMAKE_SOURCE_DIR}/sh2-ftdi-hal)
 if(WIN32)
     if(CMAKE_CL_64)
          find_library(FTD2XX_LIB ftd2xx ${CMAKE_SOURCE_DIR}/sh2-ftdi-hal/x64)
@@ -51,10 +64,16 @@ if(WIN32)
     target_link_libraries(sh2_logger ${FTD2XX_LIB})
 endif()
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_libraries(sh2_logger pthread)
+endif()
 
-# Install docs, license, sample config
+# Install docs, license, sample configs, and binary
 install(FILES
     README.md
     LICENSE
+    dr100.json
+    6agUncalibratedEnu.json
+    9agmRawCalibrated.json
     DESTINATION .)
-
+install(TARGETS sh2_logger DESTINATION bin)

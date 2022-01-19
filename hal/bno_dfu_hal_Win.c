@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 CEVA, Inc.
+ * Copyright 2021-2022 CEVA, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License and
@@ -36,7 +36,7 @@
 struct bno_dfu_hal_s {
     sh2_Hal_t hal_fns; // must be first so (sh2_Hal_t *) can be cast as (bno_dfu_hal_t *)
 
-    const char * device_name;
+    const char* device_name;
     bool is_open;
     bool latencySet;
     HANDLE ftHandle;
@@ -139,9 +139,6 @@ static int dfu_hal_open(sh2_Hal_t* self) {
         fprintf(stderr, "Unable to set data characteristics\n");
         return -1;
     }
-
-    // status = FT_ClrDtr(pHal->ftHandle);
-    // status = FT_SetDtr(pHal->ftHandle);
 
     status = FT_SetLatencyTimer(pHal->ftHandle, LATENCY_TIMER_STARTUP);
     if (status != FT_OK) {
@@ -272,7 +269,7 @@ static bno_dfu_hal_t dfu_hal = {
         .commEvent = 0,
 };
 
-sh2_Hal_t* bno_dfu_hal_init(const char *device_name) {
+sh2_Hal_t* bno_dfu_hal_init(const char* device_name) {
     // Save reference to device file name, etc.
     dfu_hal.device_name = device_name;
 

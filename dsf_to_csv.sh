@@ -26,6 +26,7 @@ do
     fi
     outFN="${prefix}.${channel}.${name}.csv"
     header=$(grep "^\+${channel} " $f)
+    echo "Outputting to ${outFN}"
     echo ${header} | cut -d ' ' -f 1 --complement | awk -v FS=, '
 {
     for (i = 1; i<=NF; i++){

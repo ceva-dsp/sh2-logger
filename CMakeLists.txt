@@ -23,6 +23,7 @@ set(CMAKE_CXX_STANDARD 11)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/sh2")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/hal")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ftdi")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/tclap/include")
 
 
@@ -57,9 +58,9 @@ add_executable(sh2_logger
 
 if(WIN32)
     if(CMAKE_CL_64)
-         find_library(FTD2XX_LIB ftd2xx ${CMAKE_SOURCE_DIR}/sh2-ftdi-hal/x64)
+         find_library(FTD2XX_LIB ftd2xx ${CMAKE_SOURCE_DIR}/ftdi/x64)
     else()
-         find_library(FTD2XX_LIB ftd2xx ${CMAKE_SOURCE_DIR}/sh2-ftdi-hal/Win32)
+         find_library(FTD2XX_LIB ftd2xx ${CMAKE_SOURCE_DIR}/ftdi/Win32)
     endif()
     target_link_libraries(sh2_logger ${FTD2XX_LIB})
 endif()

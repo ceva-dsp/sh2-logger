@@ -1,4 +1,4 @@
-# Copyright 2018-21 CEVA, Inc.
+# Copyright 2018-22 CEVA, Inc.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License and
@@ -27,9 +27,9 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/tclap/include")
 
 
 if(WIN32)
-  set(BNO_DFU_HAL bno_dfu_hal_Win.c)
+  set(BNO_DFU_HAL hal/bno_dfu_hal_Win.c)
 else()
-  set(BNO_DFU_HAL bno_dfu_hal_Linux.c)
+  set(BNO_DFU_HAL hal/bno_dfu_hal_Linux.c)
 endif()
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
@@ -45,7 +45,7 @@ add_executable(sh2_logger
     FspDfu.cpp
     BnoDfu.cpp
     hal/ftdi_hal.c
-    hal/${BNO_DFU_HAL}
+    ${BNO_DFU_HAL}
     HcBinFile.cpp
     sh2/sh2.c
     sh2/sh2_SensorValue.c
@@ -55,10 +55,6 @@ add_executable(sh2_logger
     FileWheelSource.cpp
     )
 
-# # Should be possible to group the libraries under directories like
-#   lib/x64 and lib/Win32 and some combination of
-#   CMAKE_PREFIX_PATH/CMAKE_LIBRARY_PATH
-# find_library(FTD2XX_LIB ftd2xx ${CMAKE_SOURCE_DIR}/sh2-ftdi-hal)
 if(WIN32)
     if(CMAKE_CL_64)
          find_library(FTD2XX_LIB ftd2xx ${CMAKE_SOURCE_DIR}/sh2-ftdi-hal/x64)
@@ -72,9 +68,12 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_link_libraries(sh2_logger pthread)
 endif()
 
-# Install docs, license, sample config
+# Install docs, license, sample configs, and binary
 install(FILES
     README.md
     LICENSE
+    dr100.json
+    6agUncalibratedEnu.json
+    9agmRawCalibrated.json
     DESTINATION .)
-
+install(TARGETS sh2_logger DESTINATION bin)

@@ -32,6 +32,8 @@
 #include <string.h>
 #include <string>
 
+#include "config.h"
+
 #include "BnoDfu.h"
 #include "DsfLogger.h"
 #include "FileWheelSource.h"
@@ -116,7 +118,8 @@ private:
 
 void Sh2Logger::parseArgs(int argc, const char* argv[]) {
     // Process command line args
-    TCLAP::CmdLine cmd("SH2 Logging utility", ' ', "1.0");
+    // PROJECT_VERSION set in CMakeLists.txt, generated config.h
+    TCLAP::CmdLine cmd("SH2 Logging utility", ' ', PROJECT_VERSION);
 
     // Command: log (default), dfu,
     std::vector<std::string> operations = {"log", "dfu-bno", "dfu-fsp200", "template"};

@@ -14,7 +14,9 @@
 # limitations under the License.
 
 cmake_minimum_required(VERSION 3.4)
-project(sh2_logger)
+project(sh2_logger VERSION 1.1.0)
+
+configure_file(config.h.in config.h)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_C_FLAGS "-std=gnu99")
@@ -25,6 +27,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/sh2")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/hal")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ftdi")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/tclap/include")
+include_directories(${PROJECT_BINARY_BIN})  # allows generated config.h to be accessed.
 
 
 if(WIN32)

@@ -18,7 +18,7 @@ This utility can also be used to perform firmware updates.
 
 * Clone this repository using the --recursive flag with git:
 ```
-git clone --recursive http://github.com/hcrest/sh2-logger
+git clone --recursive http://github.com/ceva-dsp/sh2-logger
 ```
 
 * Adjust the receive buffer latency timer. Reduce the latency timer from the default value of 16 milliseconds to 1 millisecond. 

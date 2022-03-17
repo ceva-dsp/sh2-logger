@@ -578,10 +578,8 @@ static int ftdi_hal_write(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len) {
         pHal->lastBsqTime_us = 0;
 
         // write bytes one at a time.
-        // The sensor hub can't handle data too fast, we need to limit it to
-        // one char per millisecond, approximately.  By writing one char at a time
-        // and having the USB latency setting at 1ms, we can effectively limit
-        // the data rate as needed.
+        // The sensor hub can't handle data too fast: nominal limit is 100 us
+        // between bytes.
         unsigned written = 0;
         while (written < encodedLen) {
             // transmit c.
@@ -604,6 +602,7 @@ static int ftdi_hal_write(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len) {
                 return SH2_ERR_IO;
             }
 #endif
+            delay_us(100);
         }
 
         // set retval to notify caller that data was sent
@@ -631,6 +630,7 @@ static int ftdi_hal_write(sh2_Hal_t* self, uint8_t* pBuffer, unsigned len) {
                 return SH2_ERR_IO;
             }
 #endif
+            delay_us(100);
         }
 
         // we did not write any of the user's data
